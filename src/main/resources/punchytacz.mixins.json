@@ -4,9 +4,7 @@
   "package": "com.punchytacz.mixin",
   "compatibilityLevel": "JAVA_17",
   "client": [
-    "FirstPersonHandsMixin",
-    "SubmitNodeCollectionMixin",
-    "SubmitNodeStorageMixin"
+    "FirstPersonHandsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

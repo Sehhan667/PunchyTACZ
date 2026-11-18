@@ -14,19 +14,20 @@ public class BedrockPolygon {
             transform.transformPosition(corner.pos);
         }
         for (BedrockPolygon polygon : polygons) {
-            transform.transformDirection(polygon.normal);
+            if (polygon != null) {
+                transform.transformDirection(polygon.normal);
+            }
         }
     }
 
     public BedrockPolygon(BedrockVertex[] vertices, float u1, float v1, float u2, float v2,
                           float texWidth, float texHeight, boolean mirror, Direction direction) {
         this.vertices = vertices;
-        float f = 0.0F / texWidth;
-        float f1 = 0.0F / texHeight;
-        vertices[0] = vertices[0].remap(u2 / texWidth - f, v1 / texHeight + f1);
-        vertices[1] = vertices[1].remap(u1 / texWidth + f, v1 / texHeight + f1);
-        vertices[2] = vertices[2].remap(u1 / texWidth + f, v2 / texHeight - f1);
-        vertices[3] = vertices[3].remap(u2 / texWidth - f, v2 / texHeight - f1);
+        // 基岩 UV 以贴图像素为单位，这里一次换算成 0..1（原实现里的 f/f1 恒为 0，已去掉）
+        vertices[0] = vertices[0].remap(u2 / texWidth, v1 / texHeight);
+        vertices[1] = vertices[1].remap(u1 / texWidth, v1 / texHeight);
+        vertices[2] = vertices[2].remap(u1 / texWidth, v2 / texHeight);
+        vertices[3] = vertices[3].remap(u2 / texWidth, v2 / texHeight);
         if (mirror) {
             int i = vertices.length;
             for (int j = 0; j < i / 2; ++j) {
@@ -38,6 +39,14 @@ public class BedrockPolygon {
         this.normal = direction.step();
         if (mirror) {
             this.normal.mul(-1.0F, 1.0F, 1.0F);
+        }
+    }
+
+    /** 写入静态网格：位置从模型单位（1/16 格）换算成方块 */
+    public void bake(QuadMesh mesh) {
+        for (BedrockVertex vertex : this.vertices) {
+            mesh.vertex(vertex.pos.x() / 16.0F, vertex.pos.y() / 16.0F, vertex.pos.z() / 16.0F,
+                    this.normal.x, this.normal.y, this.normal.z, vertex.u, vertex.v);
         }
     }
 }

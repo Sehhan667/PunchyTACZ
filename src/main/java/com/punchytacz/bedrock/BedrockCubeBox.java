@@ -1,14 +1,8 @@
 package com.punchytacz.bedrock;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.core.Direction;
-import net.minecraft.util.ARGB;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 /** 取自 TACZ（GPL-3.0）的盒型 UV cube */
 public class BedrockCubeBox implements BedrockCube {
@@ -98,27 +92,10 @@ public class BedrockCubeBox implements BedrockCube {
     }
 
     @Override
-    public void compile(PoseStack.Pose pose, VertexConsumer consumer, int light, int overlay,
-                        float red, float green, float blue, float alpha) {
-        Matrix4f matrix4f = pose.pose();
-        Matrix3f matrix3f = pose.normal();
-
+    public void bake(QuadMesh mesh) {
         for (BedrockPolygon polygon : this.polygons) {
-            Vector3f vector3f = new Vector3f(polygon.normal);
-            vector3f.mul(matrix3f);
-            float nx = vector3f.x();
-            float ny = vector3f.y();
-            float nz = vector3f.z();
-
-            for (BedrockVertex vertex : polygon.vertices) {
-                float x = vertex.pos.x() / 16.0F;
-                float y = vertex.pos.y() / 16.0F;
-                float z = vertex.pos.z() / 16.0F;
-                Vector4f vector4f = new Vector4f(x, y, z, 1.0F);
-                vector4f.mul(matrix4f);
-                consumer.addVertex(vector4f.x(), vector4f.y(), vector4f.z(),
-                        ARGB.colorFromFloat(alpha, red, green, blue),
-                        vertex.u, vertex.v, overlay, light, nx, ny, nz);
+            if (polygon != null) {
+                polygon.bake(mesh);
             }
         }
     }

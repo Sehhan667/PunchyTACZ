@@ -124,7 +124,11 @@ public class BedrockModel {
                 part.cubes.add(cube);
             }
         }
-        // 4. idle_view 路径（从根到 idle_view）
+        // 4. 一次性烘焙：把 cube 多边形展平成静态顶点数组，之后每帧只做矩阵变换
+        for (BedrockPart part : model.parts.values()) {
+            part.bake();
+        }
+        // 5. idle_view 路径（从根到 idle_view）
         BedrockPart idleView = model.parts.get("idle_view");
         if (idleView != null) {
             List<BedrockPart> path = new ArrayList<>();
@@ -150,11 +154,21 @@ public class BedrockModel {
         }
     }
 
+    /** @param color 打包好的 ARGB 顶点颜色（通常是 0xFFFFFFFF） */
     public void render(PoseStack poseStack, VertexConsumer consumer, int light, int overlay,
-                       float r, float g, float b, float a, Predicate<String> boneFilter) {
+                       int color, Predicate<String> boneFilter) {
         for (BedrockPart part : roots) {
-            part.render(poseStack, consumer, light, overlay, r, g, b, a, boneFilter);
+            part.render(poseStack, consumer, light, overlay, color, boneFilter);
         }
+    }
+
+    /** 已烘焙的四边形总数，用于日志确认烘焙结果 */
+    public int bakedQuads() {
+        int total = 0;
+        for (BedrockPart part : parts.values()) {
+            total += part.mesh == null ? 0 : part.mesh.quads();
+        }
+        return total;
     }
 
     private static float rad(float deg) {

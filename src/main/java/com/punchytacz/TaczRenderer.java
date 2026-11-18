@@ -3,7 +3,6 @@ package com.punchytacz;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.punchytacz.bedrock.BedrockModel;
-import com.punchytacz.diag.SubmitProbe;
 import com.punchytacz.bedrock.BedrockPart;
 import com.punchytacz.statemachine.MeleeAnimationStateContext;
 import com.punchytacz.statemachine.MeleeAnimationStateMachine;
@@ -11,14 +10,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 import punchy.api.PunchyApi;
 
-import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /** 用 TACZ 的基岩模型与动画状态机接管 Punchy 的持刀第一人称渲染 */
 public final class TaczRenderer {
@@ -46,26 +46,18 @@ public final class TaczRenderer {
     private static boolean taczOwnsLeft;
 
     /** 物品 → 上次确认过的 entry（idle/run 时 Punchy 不给 clip，用它常驻渲染） */
-    private static final java.util.Map<String, TaczPacks.Entry> LAST_BY_ITEM = new java.util.HashMap<>();
+    private static final Map<String, TaczPacks.Entry> LAST_BY_ITEM = new HashMap<>();
 
     /** 帧序号与本帧已渲染标记，保证一套 rig 每帧只画一次 */
     private static long frameId;
     private static boolean renderedThisFrame;
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("punchytacz");
-    private static long lastStateLogNs;
     private static long lastLogNs;
     private static long lastDrawLogNs;
-    private static long lastLambdaLogNs;
-    private static long lastBaseLogNs;
-    private static long lastArmLogNs;
     private static long lastHideLogNs;
-    private static long lastPlaceLogNs;
-    private static long lastLightLogNs;
-    private static long armCalls;
-    private static long renderedFrames;
+    private static long lastStateLogNs;
     private static long drawCalls;
-    private static long lambdaCalls;
 
     private static void logThrottled(long lastNs, java.util.function.LongConsumer setter, String msg) {
         long now = System.nanoTime();
@@ -126,12 +118,12 @@ public final class TaczRenderer {
             leftArm = true;
             LAST_BY_ITEM.put(itemKey(offStack), entry);
         } else if (mainTacz && pendingRightEntry != null
-                && java.util.Objects.equals(pendingRightOption, mainOption)
+                && Objects.equals(pendingRightOption, mainOption)
                 && pendingStillHeld(player, false, pendingRightStack)) {
             clip = pendingRightClip;
             entry = pendingRightEntry;
         } else if (offTacz && pendingLeftEntry != null
-                && java.util.Objects.equals(pendingLeftOption, offOption)
+                && Objects.equals(pendingLeftOption, offOption)
                 && pendingStillHeld(player, true, pendingLeftStack)) {
             clip = pendingLeftClip;
             entry = pendingLeftEntry;
@@ -145,18 +137,15 @@ public final class TaczRenderer {
         } else {
             clearPending(false);
             clearPending(true);
-            logThrottled(lastLogNs, v -> lastLogNs = v,
-                    "punchytacz: 无 TACZ clip（main=" + (main == null ? "null" : main.name())
-                            + " off=" + (off == null ? "null" : off.name())
-                            + " mainOpt=" + mainOption + " offOpt=" + offOption + "）");
             return;
         }
-        if (renderRig(entry, clip, leftArm, sink, light, partialTick, poseStack)) {
-            renderedThisFrame = true;
+        renderedThisFrame = renderRig(entry, clip, leftArm, sink, light, partialTick, poseStack);
+        if (Settings.logState) {
+            logThrottled(lastStateLogNs, v -> lastStateLogNs = v,
+                    "punchytacz: frame#" + frameId + " clip=" + clipName(clip)
+                            + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame
+                            + " rt=" + Settings.mode + "/" + Settings.filter);
         }
-        logThrottled(lastLogNs, v -> lastLogNs = v,
-                "punchytacz: frame#" + frameId + " clip=" + clipName(clip)
-                        + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame);
     }
 
     private static String clipName(PunchyApi.Clip clip) {
@@ -234,10 +223,8 @@ public final class TaczRenderer {
     }
 
     public static boolean draw(PunchyApi.ItemDraw draw) {
-        // 必须在任何提前返回之前置位：勾了"交回 Punchy"时我们不会被调用到下面的渲染路径
-        SubmitProbe.enabled = Settings.logState;
         if (Settings.punchyRender) {
-            // 交回 Punchy：它用自己的 geo + display + clip 画，外观正常
+            // 交回 Punchy：它用自己的 geo + display + clip 画
             return false;
         }
         if (!(draw.stack() instanceof net.minecraft.world.item.ItemStack stack)) {
@@ -253,8 +240,6 @@ public final class TaczRenderer {
             } else {
                 taczOwnsRight = false;
             }
-            logThrottled(lastDrawLogNs, v -> lastDrawLogNs = v,
-                    "punchytacz: draw hand=" + (leftArm ? "L" : "R") + " 交给 Punchy option=" + option);
             return false;
         }
         PunchyApi.Clip clip = PunchyApi.state().clipOn(leftArm);
@@ -291,11 +276,13 @@ public final class TaczRenderer {
             taczOwnsRight = true;
         }
         drawCalls++;
-        logThrottled(lastDrawLogNs, v -> lastDrawLogNs = v,
-                "punchytacz: draw hand=" + (leftArm ? "L" : "R") + " clip=" + clipName(clip)
-                        + " option=" + option + " light=" + draw.light() + " calls=" + drawCalls);
+        if (Settings.logState) {
+            logThrottled(lastDrawLogNs, v -> lastDrawLogNs = v,
+                    "punchytacz: draw hand=" + (leftArm ? "L" : "R") + " clip=" + clipName(clip)
+                            + " option=" + option + " light=" + draw.light() + " calls=" + drawCalls);
+        }
         // 和原版 TACZ 一致：renderFirstPerson 里 event.setCanceled(true)，武器完全由 geo 接管，
-        // 不再叠原版物品模型（叠上去就是白紫本体被黑线稿盖住的那个现象）。
+        // 不再叠原版物品模型。
         return true;
     }
 
@@ -305,6 +292,7 @@ public final class TaczRenderer {
         clearHand(true);
         taczOwnsRight = false;
         taczOwnsLeft = false;
+        ItemRenderType.clear();
     }
 
     /** 相机动画（camera 骨骼），供 Camera mixin 读取 */
@@ -329,10 +317,7 @@ public final class TaczRenderer {
         // Punchy 物品回调带的光照比 avatarRenderState 更贴近它自己的绘制路径
         int pending = leftArm ? pendingLeftLight : pendingRightLight;
         final int effectiveLight = pending < 0 ? light : pending;
-        logThrottled(lastLightLogNs, v -> lastLightLogNs = v,
-                "punchytacz: light hand=" + (leftArm ? "L" : "R") + " mixin=" + light
-                        + " drawR=" + pendingRightLight + " drawL=" + pendingLeftLight
-                        + " used=" + effectiveLight + " tex=" + entry.rig().texture());
+
         // 复制基准，避免污染调用方（原版手部 pass）的 PoseStack
         PoseStack stack = new PoseStack();
         stack.mulPose(baseStack.last().pose());
@@ -356,9 +341,6 @@ public final class TaczRenderer {
             MeleeAnimationStateContext context = new MeleeAnimationStateContext();
             stateMachine.setContext(context);
             stateMachine.initialize();
-        }
-        if (!runtime.hooksInstalled) {
-            runtime.hooksInstalled = true;
         }
         stateMachine.processContextIfExist(context -> context.setPartialTicks(partialTick));
 
@@ -389,26 +371,13 @@ public final class TaczRenderer {
         }
 
         // TACZ applyItemInHandCameraAnimation：camera 骨骼旋转叠加到手部空间（受“视角摇晃”设置控制）
-        final org.joml.Quaternionf camRot = new org.joml.Quaternionf(model.cameraRotation);
         if (bobView()) {
             stack.mulPose(new Matrix4f().rotation(model.cameraRotation));
         }
         model.cameraRotation.identity();
-        // 一次性打全：基准矩阵、相机状态、以及 idle_view 反相前的模型锚点
-        Matrix4f b = baseStack.last().pose();
-        logThrottled(lastBaseLogNs, v -> lastBaseLogNs = v, String.format(
-                "punchytacz: BASE t=(%.3f,%.3f,%.3f) R=[%.3f %.3f %.3f | %.3f %.3f %.3f | %.3f %.3f %.3f] "
-                        + "cam=(%.2f,%.2f,%.2f) view=(%.1f,%.1f) bob=(%.2f,%.2f) idlePivot=%s",
-                b.m30(), b.m31(), b.m32(),
-                b.m00(), b.m01(), b.m02(), b.m10(), b.m11(), b.m12(), b.m20(), b.m21(), b.m22(),
-                player.getX(), player.getEyeY(), player.getZ(),
-                player.getViewYRot(partialTick), player.getViewXRot(partialTick),
-                xRot, yRot,
-                idlePivotInfo(model)));
         // TACZ AnimateGeoItemRenderer.renderFirstPerson：
         // 基岩模型以 (0,24,0) 为渲染原点，先抬到模型原点，再翻转上下，
         // 然后用 idle_view 定位组的反相把模型锚到相机原点。
-        // static_idle 的位移（weapon y≈56.8 模型单位）是相对 idle_view 写的，缺了反相会被顶到屏幕外。
         stack.translate(0F, 1.5F, 0F);
         // 26.3 的 PoseStack.rotate(Axis, float) 收的是弧度，180F 会被当成 180rad（≈233°）
         stack.rotateDegrees(Axis.ZP, 180F);
@@ -419,50 +388,15 @@ public final class TaczRenderer {
         if (Settings.renderArms) {
             renderArms(stack, model, sink, effectiveLight, player);
         }
-        // base 的逆：把提交时的 pose 换算回相机空间，即屏幕上真正看到的位置
-        final Matrix4f invBase = new Matrix4f(baseStack.last().pose()).invert();
-        // 这套刀包的贴图在 UV 上是「线稿/网纹」：约 20%~47% 的像素 alpha=0（洞），其余是暗色实心像素，
-        // 没有中间 alpha。用 ALPHA_CUTOUT 画时洞被硬剪、剩下的暗像素不透明地糊在一起 → 整片黑；
-        // 按 alpha 混合画才和作者原版一致（同一个 pass 里能出图，旧文档 §6.6「translucent 会消失」已作废）。
-        // 【诊断开关】false = 只画手臂、不提交武器几何，用来确认屏幕上那层黑到底是不是我们画的。
-        final Identifier effectiveTexture = Settings.textureFor(entry.rig().texture());
-        final var renderType = Settings.renderTypeFor(effectiveTexture);
-        if (Settings.logState) {
-            logThrottled(lastStateLogNs, v -> lastStateLogNs = v,
-                    "punchytacz: 状态 " + Settings.describe(renderType)
-                            + " flipU=" + Settings.flipU + " flipV=" + Settings.flipV
-                            + " submitGeo=" + Settings.submitGeo + " arms=" + Settings.renderArms
-                            + " angel=" + partScale(model.parts.get("angel"))
-                            + " devil=" + partScale(model.parts.get("devil"))
-                            + " tex=" + effectiveTexture);
-        }
         if (Settings.submitGeo) {
-        SubmitProbe.ours = true;
-        try {
-        sink.submitCustomGeometry(stack, renderType, (pose, consumer) -> {
-            PoseStack local = new PoseStack();
-            local.mulPose(pose.pose());
-            PoseStack camSpace = new PoseStack();
-            // invBase · pose = 之后的骨骼变换链，也就是屏幕坐标
-            camSpace.mulPose(new Matrix4f(invBase).mul(pose.pose()));
-            logThrottled(lastPlaceLogNs, v -> lastPlaceLogNs = v, String.format(
-                    "punchytacz: POSE origin=(%.2f,%.2f,%.2f) | CAM origin=(%.2f,%.2f,%.2f) "
-                            + "weapon=(%.2f,%.2f,%.2f) rhand=(%.2f,%.2f,%.2f) camRot=(%.2f,%.2f,%.2f,%.2f)",
-                    pose.pose().m30(), pose.pose().m31(), pose.pose().m32(),
-                    camSpace.last().pose().m30(), camSpace.last().pose().m31(), camSpace.last().pose().m32(),
-                    boneX(camSpace, model.parts.get("weapon")),
-                    boneY(camSpace, model.parts.get("weapon")),
-                    boneZ(camSpace, model.parts.get("weapon")),
-                    boneX(camSpace, model.parts.get("righthand_pos")),
-                    boneY(camSpace, model.parts.get("righthand_pos")),
-                    boneZ(camSpace, model.parts.get("righthand_pos")),
-                    camRot.x(), camRot.y(), camRot.z(), camRot.w()));
-            model.render(local, consumer, effectiveLight, OverlayTexture.NO_OVERLAY, 1F, 1F, 1F, 1F,
-                    name -> !isSkinBone(name) && Settings.allowBone(name));
-        });
-        } finally {
-            SubmitProbe.ours = false;
-        }
+            Identifier texture = entry.rig().texture();
+            sink.submitCustomGeometry(stack, ItemRenderType.of(texture), (pose, consumer) -> {
+                PoseStack local = new PoseStack();
+                local.mulPose(pose.pose());
+                // 0xFFFFFFFF = 不额外染色；贴图 alpha 只有 0/255，CUTOUT 下就是硬剪裁
+                model.render(local, consumer, effectiveLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF,
+                        name -> !isSkinBone(name));
+            });
         }
         return true;
     }
@@ -570,66 +504,6 @@ public final class TaczRenderer {
         runtime.lastPlayback = -1L;
     }
 
-    /** idle_view 的局部锚点（相对父骨骼，模型单位 1/16 格），用于判断定位基准是否合理 */
-    private static String idlePivotInfo(BedrockModel model) {
-        BedrockPart idle = model.parts.get("idle_view");
-        if (idle == null) {
-            return "none";
-        }
-        BedrockPart parent = idle.getParent();
-        return String.format("[%.2f, %.2f, %.2f]@%s", idle.x, idle.y, idle.z,
-                parent == null ? "root" : parent.name);
-    }
-
-    private static void logRigPlacement(PoseStack modelStack, BedrockModel model) {
-        logThrottled(lastPlaceLogNs, v -> lastPlaceLogNs = v, String.format(
-                "punchytacz: rig origin=(%.2f, %.2f, %.2f) weapon=(%.2f, %.2f, %.2f) rhand=(%.2f, %.2f, %.2f)",
-                modelStack.last().pose().m30(), modelStack.last().pose().m31(), modelStack.last().pose().m32(),
-                boneX(modelStack, model.parts.get("weapon")),
-                boneY(modelStack, model.parts.get("weapon")),
-                boneZ(modelStack, model.parts.get("weapon")),
-                boneX(modelStack, model.parts.get("righthand_pos")),
-                boneY(modelStack, model.parts.get("righthand_pos")),
-                boneZ(modelStack, model.parts.get("righthand_pos"))));
-    }
-
-    private static float boneX(PoseStack modelStack, BedrockPart part) {
-        return bonePos(modelStack, part)[0];
-    }
-
-    /** 骨骼可见性诊断：angel / devil 这类备用外观变体靠 scale=0 隐藏，打印出来就能确认开关生效 */
-    private static String partScale(BedrockPart part) {
-        if (part == null) {
-            return "-";
-        }
-        return String.format(Locale.ROOT, "%.2f/%.2f/%.2f", part.xScale, part.yScale, part.zScale);
-    }
-
-    private static float boneY(PoseStack modelStack, BedrockPart part) {
-        return bonePos(modelStack, part)[1];
-    }
-
-    private static float boneZ(PoseStack modelStack, BedrockPart part) {
-        return bonePos(modelStack, part)[2];
-    }
-
-    private static float[] bonePos(PoseStack modelStack, BedrockPart part) {
-        if (part == null) {
-            return new float[]{Float.NaN, Float.NaN, Float.NaN};
-        }
-        java.util.List<BedrockPart> path = new java.util.ArrayList<>();
-        for (BedrockPart p = part; p != null; p = p.getParent()) {
-            path.add(0, p);
-        }
-        PoseStack ps = new PoseStack();
-        ps.mulPose(modelStack.last().pose());
-        for (BedrockPart p : path) {
-            p.translateAndRotateAndScale(ps);
-        }
-        Matrix4f m = ps.last().pose();
-        return new float[]{m.m30(), m.m31(), m.m32()};
-    }
-
     private static void renderArms(PoseStack modelStack, BedrockModel model, SubmitNodeCollector sink,
                                    int light, LocalPlayer player) {
         Identifier skin = skinTexture(player);
@@ -719,19 +593,17 @@ public final class TaczRenderer {
      * <p>
      * 不能用 {@code PunchyApi.state()}：日志显示它在每帧的部分时刻为 null，
      * 导致 hideArms 间歇性变回 false、Punchy 又画出一对手臂（表现为“第三只手”）。
-     * 这里读取 renderFrame / draw 维护的归属状态；包切到 Punchy 包时会立即变回 false。
      */
     public static boolean hideArmsNow() {
         if (Settings.punchyRender) {
             return false;
         }
-        // 只有本帧真的提交了 rig 才让 Punchy 藏手臂；否则（Punchy 这帧没有 clip，
-        // 例如 hand_out / 切包过渡）就会出现“手臂和刀一起消失”。
         boolean hidden = renderedThisFrame;
-        logThrottled(lastHideLogNs, v -> lastHideLogNs = v,
-                "punchytacz: hideArms=" + hidden
-                        + " ownR=" + taczOwnsRight + " ownL=" + taczOwnsLeft
-                        + " optR=" + pendingRightOption + " optL=" + pendingLeftOption);
+        if (Settings.logState) {
+            logThrottled(lastHideLogNs, v -> lastHideLogNs = v,
+                    "punchytacz: hideArms=" + hidden
+                            + " ownR=" + taczOwnsRight + " ownL=" + taczOwnsLeft);
+        }
         return hidden;
     }
 }

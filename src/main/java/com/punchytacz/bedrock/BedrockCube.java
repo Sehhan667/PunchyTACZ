@@ -1,10 +1,7 @@
 package com.punchytacz.bedrock;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-
-/** 取自 TACZ（GPL-3.0）的 BedrockCube */
+/** 取自 TACZ（GPL-3.0）的 BedrockCube，输出阶段改为一次性烘焙 */
 public interface BedrockCube {
-    void compile(PoseStack.Pose pose, VertexConsumer consumer, int light, int overlay,
-                 float red, float green, float blue, float alpha);
+    /** 把本 cube 的所有面写入静态网格（模型空间，坐标已归一化到方块） */
+    void bake(QuadMesh mesh);
 }
