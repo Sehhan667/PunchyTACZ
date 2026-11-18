@@ -42,6 +42,9 @@ unimined.minecraft {
 dependencies {
     // Punchy 仅编译期引用（不打包、不分发）
     compileOnly files(new File(project.punchy_jar))
+    // 配置界面：仅编译期，运行时由玩家安装的 mod 提供（缺失时自动降级，不影响主功能）
+    compileOnly files(new File(project.cloth_config_jar))
+    compileOnly files(new File(project.modmenu_jar))
 }
 
 processResources {

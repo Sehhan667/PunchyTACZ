@@ -19,8 +19,11 @@ import org.slf4j.LoggerFactory;
 import java.io.Reader;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 扫描资源包中 Punchy 格式的动画文件，读取其中的 "tacz" 声明：
@@ -60,7 +63,9 @@ public final class TaczPacks {
         }
     }
 
-    private static final Map<String, Entry> CLIPS = new LinkedHashMap<>();
+    private static final Map<String, Map<String, Entry>> CLIPS_BY_PACK = new LinkedHashMap<>();
+    private static final Map<String, Entry> ALL_CLIPS = new LinkedHashMap<>();
+    private static final Set<String> TACZ_PACK_OPTIONS = new LinkedHashSet<>();
     private static final Map<Identifier, List<ObjectAnim>> ANIMS = new HashMap<>();
     private static final Map<String, Runtime> RUNTIMES = new HashMap<>();
 
@@ -80,9 +85,56 @@ public final class TaczPacks {
         ensure();
     }
 
-    public static Entry find(String punchyClip) {
+    /**
+     * 按 Punchy 选中的包 + clip 名取映射。
+     * Punchy 的包选项形如 {@code pack:file/punchy刀包移植}，见 {@link #packOptionOf(String)}。
+     */
+    public static Entry find(String packOption, String punchyClip) {
         ensure();
-        return punchyClip == null ? null : CLIPS.get(punchyClip);
+        if (packOption == null || punchyClip == null) {
+            return null;
+        }
+        Map<String, Entry> clips = CLIPS_BY_PACK.get(packOption);
+        return clips == null ? null : clips.get(punchyClip);
+    }
+
+    /** 不区分包名的回退查询，仅用于诊断/兼容旧 clip 判断 */
+    public static Entry findAny(String punchyClip) {
+        ensure();
+        return punchyClip == null ? null : ALL_CLIPS.get(punchyClip);
+    }
+
+    /** 该 Punchy 包选项是否声明了 tacz 块（即应由本模组接管渲染） */
+    public static boolean isTaczPackOption(String option) {
+        ensure();
+        return option != null && TACZ_PACK_OPTIONS.contains(option);
+    }
+
+    /**
+     * 把资源包 id / Punchy 选择值统一成 Punchy 的选项 id。
+     * 规则对齐 PunchyTuningConfig.normalizeMixOption：
+     * 内置包 → pack:punchy:punchy，原版/mod_resources → punchy_default，其余 → pack:<小写 id>。
+     */
+    public static String packOptionOf(String packId) {
+        if (packId == null) {
+            return null;
+        }
+        String id = packId.trim().toLowerCase(Locale.ROOT);
+        if (id.isEmpty()) {
+            return null;
+        }
+        if (id.startsWith("pack:")) {
+            id = id.substring("pack:".length());
+        }
+        if (id.equals("punchy") || id.startsWith("punchy:") || id.endsWith(":punchy")
+                || id.endsWith("/punchy") || id.endsWith("\\punchy")
+                || id.equals("builtin/punchy") || id.equals("builtin\\punchy")) {
+            return "pack:punchy:punchy";
+        }
+        if (id.equals("vanilla") || id.equals("mod_resources") || id.equals("punchy_default")) {
+            return "punchy_default";
+        }
+        return "pack:" + id;
     }
 
     /** 按 rig + 手取运行时；每只手一个独立模型，动画原型共享 */
@@ -165,7 +217,9 @@ public final class TaczPacks {
         }
         lastManager = rm;
         dirty = false;
-        CLIPS.clear();
+        CLIPS_BY_PACK.clear();
+        ALL_CLIPS.clear();
+        TACZ_PACK_OPTIONS.clear();
         ANIMS.clear();
         RUNTIMES.clear();
         scan(rm);
@@ -191,12 +245,15 @@ public final class TaczPacks {
                 LOG.warn("读取动画文件失败 {}", entry.getKey(), e);
                 continue;
             }
-            readFile(root);
+            String packOption = packOptionOf(entry.getValue().sourcePackId());
+            if (packOption != null) {
+                readFile(root, packOption);
+            }
         }
-        LOG.info("punchytacz: 已登记 {} 个 TACZ 风格 clip", CLIPS.size());
+        LOG.info("punchytacz: 已登记 {} 个 TACZ 包，{} 个 clip", TACZ_PACK_OPTIONS.size(), ALL_CLIPS.size());
     }
 
-    private static void readFile(JsonObject root) {
+    private static void readFile(JsonObject root, String packOption) {
         JsonObject tacz = root.has("tacz") && root.get("tacz").isJsonObject()
                 ? root.getAsJsonObject("tacz") : null;
 
@@ -235,8 +292,12 @@ public final class TaczPacks {
         if (rig == null) {
             return;
         }
+        Map<String, Entry> clips = CLIPS_BY_PACK.computeIfAbsent(packOption, key -> new LinkedHashMap<>());
         for (Map.Entry<String, String> e : mapping.entrySet()) {
-            CLIPS.put(e.getKey(), new Entry(rig, e.getValue()));
+            Entry entry = new Entry(rig, e.getValue());
+            clips.put(e.getKey(), entry);
+            ALL_CLIPS.put(e.getKey(), entry);
         }
+        TACZ_PACK_OPTIONS.add(packOption);
     }
 }

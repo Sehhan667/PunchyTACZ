@@ -12,6 +12,9 @@
   "entrypoints": {
     "client": [
       "com.punchytacz.PunchyTACZClient"
+    ],
+    "modmenu": [
+      "com.punchytacz.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -21,5 +24,9 @@
     "fabricloader": ">=0.19.5",
     "minecraft": "~26.3",
     "punchy": "*"
+  },
+  "suggests": {
+    "cloth-config": "*",
+    "modmenu": "*"
   }
 }

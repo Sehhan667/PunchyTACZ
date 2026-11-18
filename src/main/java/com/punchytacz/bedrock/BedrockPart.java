@@ -70,6 +70,11 @@ public class BedrockPart {
         if (!visible) {
             return;
         }
+        // scale 为 0 在枪包里就是「隐藏这个骨骼及其子树」的写法（angel / devil 这类备用外观变体就这么切换）。
+        // 直接整枝跳过：既不会画出多余的几何，也避免 poseStack.scale(0,0,0) 让法线矩阵退化成 NaN。
+        if (xScale == 0.0F || yScale == 0.0F || zScale == 0.0F) {
+            return;
+        }
         if (cubes.isEmpty() && children.isEmpty()) {
             return;
         }

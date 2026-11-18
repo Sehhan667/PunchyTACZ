@@ -11,6 +11,7 @@ public final class PunchyTACZClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        Settings.load();
         PunchyApi.drawItem(MOD_ID, TaczRenderer::draw);
         // Punchy 自己也会画一对第一人称手臂；TACZ rig 内部已画真实手臂，必须藏掉 Punchy 那对
         PunchyApi.hideArms(MOD_ID, TaczRenderer::hideArmsNow);
@@ -18,6 +19,8 @@ public final class PunchyTACZClient implements ClientModInitializer {
             TaczPacks.reload();
             TaczRenderer.resetActive();
         });
+        // 菜单里切换动画包时立即停掉旧的 TACZ rig，避免和 Punchy 同时画手
+        PunchyApi.onSettingsChanged(MOD_ID, TaczRenderer::resetActive);
         LOG.info("punchytacz: Punchy API 已接入");
     }
 }

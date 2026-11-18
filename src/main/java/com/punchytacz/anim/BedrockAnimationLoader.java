@@ -60,6 +60,13 @@ public final class BedrockAnimationLoader {
             animation.addChannel(buildChannel(node, type, List.of(new Key(0.0, frames))));
             return;
         }
+        // 单个数字也常被用来写常量，尤其是 "scale": 0 —— 这是隐藏骨骼（备用外观变体）的写法。
+        // 以前这里直接 return，通道不会创建，该骨骼就留在默认 scale=1，备用变体整份几何被画出来，
+        // 叠在主模型上表现为「糊了一层黑、缝隙里透出正常颜色」+ z-fighting。
+        if (frames.isJsonPrimitive() && frames.getAsJsonPrimitive().isNumber()) {
+            animation.addChannel(buildChannel(node, type, List.of(new Key(0.0, frames))));
+            return;
+        }
         if (!frames.isJsonObject() || frames.getAsJsonObject().size() == 0) {
             return;
         }
@@ -161,6 +168,11 @@ public final class BedrockAnimationLoader {
             return keyframe;
         }
         if (element.isJsonArray()) {
+            keyframe.data = readVec(element);
+            return keyframe;
+        }
+        // 单值关键帧（"scale": 0 / "scale": 1）：按三轴广播
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
             keyframe.data = readVec(element);
             return keyframe;
         }

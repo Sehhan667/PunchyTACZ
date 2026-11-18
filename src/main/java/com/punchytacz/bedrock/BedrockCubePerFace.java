@@ -19,6 +19,8 @@ public class BedrockCubePerFace implements BedrockCube {
     public final float maxY;
     public final float maxZ;
     private final BedrockPolygon[] polygons;
+    private float texWidth = 64F;
+    private float texHeight = 64F;
 
     public BedrockCubePerFace(float x, float y, float z, float width, float height, float depth, float delta,
                               float texWidth, float texHeight, FaceUVsItem faces) {
@@ -45,6 +47,8 @@ public class BedrockCubePerFace implements BedrockCube {
             this.maxY = max.y;
             this.maxZ = max.z;
         }
+        this.texWidth = texWidth;
+        this.texHeight = texHeight;
         this.polygons = new BedrockPolygon[6];
 
         float xEnd = x + width;
@@ -80,7 +84,7 @@ public class BedrockCubePerFace implements BedrockCube {
 
     private BedrockPolygon getTexturedQuad(BedrockVertex[] positionsIn, float texWidth, float texHeight,
                                            Direction direction, FaceUVsItem faces, BedrockVertex empty) {
-        FaceItem face = faces.getFace(direction);
+        FaceItem face = faces.getFace(com.punchytacz.Settings.mapFace(direction));
         float u1 = face.getUv()[0];
         float v1 = face.getUv()[1];
         float u2 = u1 + face.getUvSize()[0];
@@ -103,16 +107,26 @@ public class BedrockCubePerFace implements BedrockCube {
             float nx = vector3f.x();
             float ny = vector3f.y();
             float nz = vector3f.z();
+            if (com.punchytacz.Settings.flipNormal) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
 
             for (BedrockVertex vertex : polygon.vertices) {
                 float x = vertex.pos.x() / 16.0F;
                 float y = vertex.pos.y() / 16.0F;
                 float z = vertex.pos.z() / 16.0F;
+                // UV 翻转放在顶点写出时做，改配置立刻生效（不必重新解析模型）
+                float u = (com.punchytacz.Settings.flipU ? 1.0F - vertex.u : vertex.u)
+                        + com.punchytacz.Settings.offsetU / texWidth;
+                float v = (com.punchytacz.Settings.flipV ? 1.0F - vertex.v : vertex.v)
+                        + com.punchytacz.Settings.offsetV / texHeight;
                 Vector4f vector4f = new Vector4f(x, y, z, 1.0F);
                 vector4f.mul(matrix4f);
                 consumer.addVertex(vector4f.x(), vector4f.y(), vector4f.z(),
                         ARGB.colorFromFloat(alpha, red, green, blue),
-                        vertex.u, vertex.v, overlay, light, nx, ny, nz);
+                        u, v, overlay, light, nx, ny, nz);
             }
         }
     }
