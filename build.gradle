@@ -1,0 +1,58 @@
+plugins {
+    id 'java'
+}
+
+apply plugin: "xyz.wagyourtail.unimined"
+
+base {
+    archivesName = project.archives_base_name
+}
+version = project.mod_version
+group = project.maven_group
+
+java {
+    sourceCompatibility = JavaVersion.toVersion(project.java_version)
+    targetCompatibility = JavaVersion.toVersion(project.java_version)
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(project.java_version.toInteger()))
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'fabric-maven'
+        url = 'https://maven.fabricmc.net/'
+    }
+    flatDir { dirs 'libs' }
+}
+
+unimined.minecraft {
+    version rootProject.minecraft_version
+
+    mappings {
+        mojmap()
+    }
+
+    fabric {
+        loader project.loader_version
+    }
+}
+
+dependencies {
+    // Punchy 仅编译期引用（不打包、不分发）
+    compileOnly files(new File(project.punchy_jar))
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand(version: project.version)
+    }
+    duplicatesStrategy DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.release = project.java_version.toInteger()
+}
