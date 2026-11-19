@@ -380,6 +380,7 @@ public final class TaczRenderer {
         runtime.model.cameraRotation.identity();
         stateMachine.update();
         CAMERA_ANIM.set(runtime.model.cameraRotation);
+        playAnimSounds(runtime);
 
         BedrockModel model = runtime.model;
         // TACZ renderFirstPerson：先做视角摇摆
@@ -443,8 +444,38 @@ public final class TaczRenderer {
         return true;
     }
 
-    /** 把 Punchy 的 clip 变化映射成状态机的一次性输入 */
-    private static void triggerForClip(TaczPacks.Runtime runtime, PunchyApi.Clip clip) {
+    /**
+     * 播放本帧跨过的动画音效（音效表来自动画文件的 {@code sound_effects}）。
+     * <p>
+     * 之前这套音效从不播放（移植时删掉了声音通道），实际听到的是 Punchy 自己 clip 的音效
+     * ——它没有 angel 变体。现在按**最终播放的动画名**取音效表（annihil 的 angel 变体
+     * 会用 {@code inspect_angel} 的表），配置里可关。
+     */
+    private static void playAnimSounds(TaczPacks.Runtime runtime) {
+        if (!Settings.playAnimSounds) {
+            runtime.controller.consumeSoundEvents();
+            return;
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            runtime.controller.consumeSoundEvents();
+            return;
+        }
+        var soundManager = Minecraft.getInstance().getSoundManager();
+        for (String effect : runtime.controller.consumeSoundEvents()) {
+            Identifier id = Identifier.tryParse(effect);
+            if (id == null) {
+                continue;
+            }
+            var event = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getValue(id);
+            if (event != null) {
+                soundManager.play(
+                        net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(event, 1.0F));
+            }
+        }
+    }
+
+    /** 把 Punchy 的 clip 变化映射成状态机的一次性输入 */    private static void triggerForClip(TaczPacks.Runtime runtime, PunchyApi.Clip clip) {
         if (clip == null) {
             return;
         }

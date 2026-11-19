@@ -32,6 +32,9 @@ public final class AnimRunner {
         this.animation = Objects.requireNonNull(animation);
     }
 
+    /** 本帧跨过的音效关键帧（渲染层每帧消费） */
+    private final List<String> pendingSounds = new ArrayList<>();
+
     public ObjectAnim getAnimation() {
         return animation;
     }
@@ -233,6 +236,7 @@ public final class AnimRunner {
     }
 
     public void update(boolean blend) {
+        long fromTimeNs = progressNs;
         long alphaProgress = elapsedSinceLastUpdate();
         updateProgress(alphaProgress);
         if (isTransitioning) {
@@ -245,7 +249,22 @@ public final class AnimRunner {
             }
         } else {
             animation.update(blend, progressNs);
+            // 音效关键帧：与 TACZ 一致按播放区间收集，跨过即请求播放
+            ObjectSoundChannel soundChannel = animation.getSoundChannel();
+            if (soundChannel != null) {
+                soundChannel.collect(fromTimeNs / 1e9f, progressNs / 1e9f, pendingSounds);
+            }
         }
+    }
+
+    /** 取出本帧跨过的音效请求并清空 */
+    public List<String> consumeSoundEvents() {
+        if (pendingSounds.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>(pendingSounds);
+        pendingSounds.clear();
+        return result;
     }
 
     private long elapsedSinceLastUpdate() {

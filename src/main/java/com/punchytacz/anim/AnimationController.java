@@ -14,6 +14,8 @@ public final class AnimationController {
     private final ArrayList<Queue<AnimationPlan>> animationQueue = new ArrayList<>();
     private final Map<String, ObjectAnim> prototypes = new HashMap<>();
     private Iterable<Integer> updatingTrackArray;
+    /** 本帧跨过的音效请求（渲染层每帧消费） */
+    private final List<String> pendingSounds = new ArrayList<>();
 
     public AnimationController(List<ObjectAnim> animationPrototypes, AnimListenerSupplier listenerSupplier) {
         for (ObjectAnim prototype : animationPrototypes) {
@@ -171,5 +173,27 @@ public final class AnimationController {
                 }
             }
         }
+        collectSounds(runner);
+    }
+
+    private void collectSounds(AnimRunner runner) {
+        if (runner == null) {
+            return;
+        }
+        // 源 runner 与过渡目标都可能本帧推进过（目标在 updateByTrack 里单独 update）
+        pendingSounds.addAll(runner.consumeSoundEvents());
+        if (runner.getTransitionTo() != null) {
+            pendingSounds.addAll(runner.getTransitionTo().consumeSoundEvents());
+        }
+    }
+
+    /** 取出本帧跨过的音效请求并清空 */
+    public List<String> consumeSoundEvents() {
+        if (pendingSounds.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>(pendingSounds);
+        pendingSounds.clear();
+        return result;
     }
 }

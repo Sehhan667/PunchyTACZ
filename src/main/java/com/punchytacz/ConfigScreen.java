@@ -95,6 +95,14 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.punchyRender = v)
                 .build());
 
+        render.addEntry(eb.startBooleanToggle(Component.literal("播放动画音效"), Settings.playAnimSounds)
+                .setDefaultValue(true)
+                .setTooltip(Component.literal("播放动画文件 sound_effects 里的音效（按最终播放的\n"
+                        + "动画名解析，angel 形态用 inspect_angel 的音效表）。\n"
+                        + "若出现双重音效（Punchy 也在播它自己的），关掉这个开关。"))
+                .setSaveConsumer(v -> Settings.playAnimSounds = v)
+                .build());
+
         render.addEntry(eb.startBooleanToggle(Component.literal("日志打印渲染状态"), Settings.logState)
                 .setDefaultValue(true)
                 .setSaveConsumer(v -> Settings.logState = v)

@@ -155,6 +155,12 @@ public final class Settings {
     public static boolean renderArms = true;
     /** true = 第一人称完全交回 Punchy 渲染（TACZ 状态机不生效） */
     public static boolean punchyRender = false;
+    /**
+     * 播放动画文件里 {@code sound_effects} 的音效（按最终播放的动画名解析，angel 变体用
+     * {@code inspect_angel} 的音效表）。注意 Punchy 自己可能也在播它 clip 的音效，
+     * 若出现双重音效就关掉这个开关。
+     */
+    public static boolean playAnimSounds = true;
     /** 每秒打印一条实际渲染状态 */
     public static boolean logState = true;
 
@@ -181,6 +187,7 @@ public final class Settings {
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
+            playAnimSounds = Boolean.parseBoolean(p.getProperty("playAnimSounds", String.valueOf(playAnimSounds)));
             logState = Boolean.parseBoolean(p.getProperty("logState", String.valueOf(logState)));
         } catch (Throwable ignored) {
             // 配置损坏时保持默认值，不影响启动
@@ -211,6 +218,7 @@ public final class Settings {
         p.setProperty("submitGeo", String.valueOf(submitGeo));
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));
+        p.setProperty("playAnimSounds", String.valueOf(playAnimSounds));
         p.setProperty("logState", String.valueOf(logState));
         try (OutputStream out = Files.newOutputStream(file())) {
             p.store(out, "PunchyTACZ render settings");

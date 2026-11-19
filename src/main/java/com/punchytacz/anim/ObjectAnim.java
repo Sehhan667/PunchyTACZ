@@ -12,6 +12,8 @@ public final class ObjectAnim {
     private final Map<String, List<AnimChannel>> channels = new HashMap<>();
     public PlayType playType = PlayType.PLAY_ONCE_HOLD;
     private float maxEndTimeS = 0f;
+    /** 音效关键帧（可为 null），由 {@code sound_effects} 解析而来 */
+    private ObjectSoundChannel soundChannel;
 
     public ObjectAnim(String name) {
         this.name = Objects.requireNonNull(name);
@@ -22,6 +24,7 @@ public final class ObjectAnim {
         this.name = source.name;
         this.playType = source.playType;
         this.maxEndTimeS = source.maxEndTimeS;
+        this.soundChannel = source.soundChannel;
         for (Map.Entry<String, List<AnimChannel>> entry : source.channels.entrySet()) {
             List<AnimChannel> newList = new ArrayList<>();
             for (AnimChannel channel : entry.getValue()) {
@@ -66,6 +69,14 @@ public final class ObjectAnim {
 
     public float getMaxEndTimeS() {
         return maxEndTimeS;
+    }
+
+    public ObjectSoundChannel getSoundChannel() {
+        return soundChannel;
+    }
+
+    public void setSoundChannel(ObjectSoundChannel channel) {
+        this.soundChannel = channel;
     }
 
     public enum PlayType {

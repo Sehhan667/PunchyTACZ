@@ -95,7 +95,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
     private void runPutAwayAnimation(MeleeAnimationStateContext context) {
         float putAwayTime = context.getPutAwayTime();
         int track = context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK);
-        context.runAnimation("put_away", track, false, ObjectAnim.PlayType.PLAY_ONCE_HOLD, putAwayTime * 0.75f);
+        context.runAnimation(anim("put_away"), track, false, ObjectAnim.PlayType.PLAY_ONCE_HOLD, putAwayTime * 0.75f);
         context.setAnimationProgress(track, 1f, true);
         context.adjustAnimationProgress(track, -putAwayTime, false);
     }
@@ -175,7 +175,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
             if (INPUT_ATTACK_LEFT.equals(input)) {
                 int counter = context.getActionCount("attack_left");
                 // annihil/observer 的 lua：attack_index = (counter + 1) % 3，三连击循环
-                String animationName = "melee_" + (counter % 3 + 1);
+                String animationName = anim("melee_" + (counter % 3 + 1));
                 context.runAnimation(animationName, context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
                         false, ObjectAnim.PlayType.PLAY_ONCE_STOP, 0.2f);
                 return this;
@@ -213,7 +213,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
         public void update(MeleeAnimationStateContext context) {
             int track = context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK);
             if (context.isStopped(track) || context.isHolding(track)) {
-                context.runAnimation("idle", track, true, ObjectAnim.PlayType.LOOP, 0f);
+                context.runAnimation(anim("idle"), track, true, ObjectAnim.PlayType.LOOP, 0f);
             }
         }
 
@@ -321,7 +321,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
 
         @Override
         public void exitAction(MeleeAnimationStateContext context) {
-            context.runAnimation("idle", context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
+            context.runAnimation(anim("idle"), context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
                     true, ObjectAnim.PlayType.PLAY_ONCE_HOLD, 0.4f);
         }
 
@@ -331,24 +331,24 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
             if (!context.isOnGround()) {
                 if (mode != 0) {
                     mode = 0;
-                    context.runAnimation("idle", track, true, ObjectAnim.PlayType.LOOP, 0.6f);
+                    context.runAnimation(anim("idle"), track, true, ObjectAnim.PlayType.LOOP, 0.6f);
                 }
             } else if (context.isInputUp()) {
                 if (mode != 2) {
                     mode = 2;
-                    context.runAnimation("walk_forward", track, true, ObjectAnim.PlayType.LOOP, 0.4f);
+                    context.runAnimation(anim("walk_forward"), track, true, ObjectAnim.PlayType.LOOP, 0.4f);
                     context.anchorWalkDist();
                 }
             } else if (context.isInputDown()) {
                 if (mode != 3) {
                     mode = 3;
-                    context.runAnimation("walk_backward", track, true, ObjectAnim.PlayType.LOOP, 0.4f);
+                    context.runAnimation(anim("walk_backward"), track, true, ObjectAnim.PlayType.LOOP, 0.4f);
                     context.anchorWalkDist();
                 }
             } else if (context.isInputLeft() || context.isInputRight()) {
                 if (mode != 4) {
                     mode = 4;
-                    context.runAnimation("walk_sideway", track, true, ObjectAnim.PlayType.LOOP, 0.4f);
+                    context.runAnimation(anim("walk_sideway"), track, true, ObjectAnim.PlayType.LOOP, 0.4f);
                     context.anchorWalkDist();
                 }
             }

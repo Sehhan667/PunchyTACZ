@@ -46,9 +46,45 @@ public final class BedrockAnimationLoader {
                     addIfPresent(animation, node, AnimChannelType.SCALE, bone.get("scale"));
                 }
             }
+            addSoundEffects(animation, clip.get("sound_effects"));
             result.add(animation);
         }
         return result;
+    }
+
+    /**
+     * 解析 {@code sound_effects}：{@code "0.0": {"effect": "wt:..."}}（也兼容字符串简写）。
+     * 播放时与最终动画同名解析（angel 形态播 inspect_angel 的音效表）。
+     */
+    private static void addSoundEffects(ObjectAnim animation, JsonElement element) {
+        if (element == null || !element.isJsonObject() || element.getAsJsonObject().size() == 0) {
+            return;
+        }
+        ObjectSoundChannel channel = new ObjectSoundChannel();
+        for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+            float time;
+            try {
+                time = Float.parseFloat(entry.getKey());
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            JsonElement value = entry.getValue();
+            String effect = null;
+            if (value != null && value.isJsonObject()) {
+                JsonElement effectElement = value.getAsJsonObject().get("effect");
+                if (effectElement != null && effectElement.isJsonPrimitive()) {
+                    effect = effectElement.getAsString();
+                }
+            } else if (value != null && value.isJsonPrimitive()) {
+                effect = value.getAsString();
+            }
+            if (effect != null && !effect.isBlank()) {
+                channel.put(time, effect);
+            }
+        }
+        if (!channel.isEmpty()) {
+            animation.setSoundChannel(channel);
+        }
     }
 
     private static void addIfPresent(ObjectAnim animation, String node, AnimChannelType type, JsonElement frames) {
