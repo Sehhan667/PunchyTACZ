@@ -110,32 +110,44 @@ public final class TaczRenderer {
         PunchyApi.State state = PunchyApi.state();
         PunchyApi.Clip main = mainTacz ? state.clipOn(false) : null;
         PunchyApi.Clip off = offTacz ? state.clipOn(true) : null;
+        // Punchy 自己的 clip（游泳 / 交互 / 攀爬等 TACZ 没有的动画）激活时，
+        // 那只手必须**完全**交回 Punchy：物品和手臂都由它画。
+        // 之前只清了 pending、没停 rig，renderFrame 会走 LAST_BY_ITEM 常驻渲染静态 idle，
+        // 同时 hideArmsNow 还在让 Punchy 藏手臂 → 出现“我们的手臂 + 它的物品”。
+        if (main != null && TaczPacks.find(mainOption, main.name()) == null) {
+            clearHand(false);
+        }
+        if (off != null && TaczPacks.find(offOption, off.name()) == null) {
+            clearHand(true);
+        }
+        boolean mainHasTaczClip = main == null || TaczPacks.find(mainOption, main.name()) != null;
+        boolean offHasTaczClip = off == null || TaczPacks.find(offOption, off.name()) != null;
 
         PunchyApi.Clip clip = null;
         TaczPacks.Entry entry = null;
         boolean leftArm = false;
-        if (main != null && (entry = TaczPacks.find(mainOption, main.name())) != null) {
+        if (main != null && mainHasTaczClip && (entry = TaczPacks.find(mainOption, main.name())) != null) {
             clip = main;
             LAST_BY_ITEM.put(itemKey(mainStack), entry);
-        } else if (off != null && (entry = TaczPacks.find(offOption, off.name())) != null) {
+        } else if (off != null && offHasTaczClip && (entry = TaczPacks.find(offOption, off.name())) != null) {
             clip = off;
             leftArm = true;
             LAST_BY_ITEM.put(itemKey(offStack), entry);
-        } else if (mainTacz && pendingRightEntry != null
+        } else if (mainTacz && mainHasTaczClip && pendingRightEntry != null
                 && Objects.equals(pendingRightOption, mainOption)
                 && pendingStillHeld(player, false, pendingRightStack)) {
             clip = pendingRightClip;
             entry = pendingRightEntry;
-        } else if (offTacz && pendingLeftEntry != null
+        } else if (offTacz && offHasTaczClip && pendingLeftEntry != null
                 && Objects.equals(pendingLeftOption, offOption)
                 && pendingStillHeld(player, true, pendingLeftStack)) {
             clip = pendingLeftClip;
             entry = pendingLeftEntry;
             leftArm = true;
-        } else if (mainTacz && (entry = LAST_BY_ITEM.get(itemKey(mainStack))) != null) {
+        } else if (mainTacz && main == null && (entry = LAST_BY_ITEM.get(itemKey(mainStack))) != null) {
             // Punchy 在 idle / run 下不给 clip，用该物品上次确认过的 entry 常驻渲染
             clip = null;
-        } else if (offTacz && (entry = LAST_BY_ITEM.get(itemKey(offStack))) != null) {
+        } else if (offTacz && off == null && (entry = LAST_BY_ITEM.get(itemKey(offStack))) != null) {
             clip = null;
             leftArm = true;
         } else {
@@ -259,8 +271,12 @@ public final class TaczRenderer {
         TaczPacks.Entry entry = clip == null ? null : TaczPacks.find(option, clip.name());
         if (entry == null) {
             if (clip != null) {
-                // Punchy 给的是我们没映射的 clip（如 hand_out），这一帧交回给它
-                clearPending(leftArm);
+                // 当前是 Punchy 自己的 clip（游泳 / 交互 / 攀爬等 TACZ 没有的动画）：
+                // 整只手交回 Punchy（物品+手臂都由它画），并停掉我们的 rig；
+                // 切回 TACZ clip（拔刀/挥砍）时 renderFrame 会重新初始化状态机并重播 draw。
+                // 之前这里只清 pending，rig 还在常驻渲染静态 idle，同时 hideArmsNow 又让
+                // Punchy 藏手臂 → 出现“我们的手臂 + 它的物品”。
+                clearHand(leftArm);
                 return false;
             }
             // Punchy 在 idle / run 这类程序化姿态下不给 clip：用这个物品上一次确认过的 entry
