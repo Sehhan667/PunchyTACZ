@@ -44,6 +44,13 @@ public final class ObjectAnim {
         }
     }
 
+    /** 音效通道的结束时间也计入（与 TACZ 一致），否则 LOOP 回绕/挂起会把尾部音效截掉 */
+    public void extendMaxEndTime(float timeS) {
+        if (timeS > maxEndTimeS) {
+            maxEndTimeS = timeS;
+        }
+    }
+
     public Map<String, List<AnimChannel>> getChannels() {
         return channels;
     }

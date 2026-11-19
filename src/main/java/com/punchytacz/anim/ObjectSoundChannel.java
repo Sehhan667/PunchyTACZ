@@ -41,4 +41,9 @@ public final class ObjectSoundChannel {
     public boolean isEmpty() {
         return keyframes.isEmpty();
     }
+
+    /** 最后一个关键帧的时刻（秒） */
+    public float lastTime() {
+        return keyframes.isEmpty() ? 0f : keyframes.lastKey();
+    }
 }

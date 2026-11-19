@@ -84,6 +84,9 @@ public final class BedrockAnimationLoader {
         }
         if (!channel.isEmpty()) {
             animation.setSoundChannel(channel);
+            // 与 TACZ 一致：音效通道的最后关键帧时间也计入 maxEndTimeS
+            // （melee_3 的音效在 1.0417s，骨骼关键帧只到 ~1.0s，不计入会被 LOOP 回绕截掉）
+            animation.extendMaxEndTime(channel.lastTime());
         }
     }
 
