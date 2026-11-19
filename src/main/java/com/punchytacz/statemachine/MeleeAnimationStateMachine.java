@@ -243,7 +243,10 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
     private final class RunState implements AnimationState<MeleeAnimationStateContext> {
         private int mode = -1;
         private long time;
-        /** 这套包的动画普遍没有 run_hold（23 把武器全部缺失），起跳时 runAnimation 会静默 no-op */
+        /**
+         * lua 里引用的 {@code run_hold} 等名字在包内动画没有定义，但它们是 TACZ 内置动画
+         * （由 {@code TaczBuiltInAnimations} 兜底注册）。这个探测保留作为兜底缺失时的保险。
+         */
         private boolean hasRunHold = true;
 
         @Override
@@ -276,27 +279,20 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
                 if (mode != 1) {
                     mode = 1;
                     if (hasRunHold) {
+                        // 内置 run_hold：腾空收枪姿势，0.6s 混合过去
                         context.runAnimation(anim("run_hold"), track, true, ObjectAnim.PlayType.LOOP, 0.6f);
                         // 腾空期间 walkDist 仍在累积（含垂直位移），落地时重新锚定相位
                         context.anchorWalkDist();
                     }
                 }
-                if (!hasRunHold) {
-                    // 没有 run_hold 时**不要**在落地时重播 run：保持 run 继续播放并把相位
-                    // 锁到地面移动距离，起跳/落地瞬间相位连续。
-                    // 原实现在落地时重播 run 且相位取 walkDist%2/2（腾空期间已继续累积），
-                    // 相位跳变 → 用户看到的“脚着地/离地卡一下”。
-                    context.setAnimationProgress(track, (context.getWalkDist() % 2.0f) / 2.0f, true);
-                }
             } else {
                 if (mode != 0) {
                     mode = 0;
                     if (hasRunHold) {
+                        // 落地：重播 run（0.2s 混合），相位重新锚定到落地时刻
                         context.runAnimation(anim("run"), track, true, ObjectAnim.PlayType.LOOP, 0.2f);
-                        // 配合重播的 run：相位从头开始，脚周期与落地时刻同步
                         context.anchorWalkDist();
                     }
-                    // 没有 run_hold 时 run 一直在距离锁相，无需重播
                 }
                 context.setAnimationProgress(track, (context.getWalkDist() % 2.0f) / 2.0f, true);
             }

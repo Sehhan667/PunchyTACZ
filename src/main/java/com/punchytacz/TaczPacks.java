@@ -7,6 +7,7 @@ import com.punchytacz.anim.AnimationController;
 import com.punchytacz.anim.BedrockAnimationLoader;
 import com.punchytacz.anim.BedrockListeners;
 import com.punchytacz.anim.ObjectAnim;
+import com.punchytacz.anim.TaczBuiltInAnimations;
 import com.punchytacz.bedrock.BedrockModel;
 import com.punchytacz.statemachine.MeleeAnimationStateMachine;
 import net.minecraft.client.Minecraft;
@@ -154,6 +155,8 @@ public final class TaczPacks {
             return null;
         }
         AnimationController controller = new AnimationController(prototypes, BedrockListeners.supplier(model));
+        // 包内定义优先；状态机引用的 idle/run_hold/walk_* 等名字由 TACZ 内置动画兜底
+        TaczBuiltInAnimations.applyFallbacks(controller, Minecraft.getInstance().getResourceManager());
         MeleeAnimationStateMachine stateMachine = new MeleeAnimationStateMachine(controller);
         Runtime runtime = new Runtime(model, controller, stateMachine);
         RUNTIMES.put(key, runtime);
