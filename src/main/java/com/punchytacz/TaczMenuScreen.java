@@ -33,9 +33,37 @@ public final class TaczMenuScreen extends Screen {
 
     /** Screen 的当前实例由本类自持（26.3 的 Minecraft 没有公开的 screen getter） */
     private static boolean open;
+    /** 展示姿态的旋转与缩放（TaczRenderer 的 showcase 分支读取） */
+    private static float showcaseYaw;
+    private static float showcasePitch;
+    private static float showcaseZoom = 1.0F;
 
     public static boolean isOpen() {
         return open;
+    }
+
+    public static float showcaseYaw() {
+        return showcaseYaw;
+    }
+
+    public static float showcasePitch() {
+        return showcasePitch;
+    }
+
+    public static float showcaseZoom() {
+        return showcaseZoom;
+    }
+
+    private static void adjustYaw(float delta) {
+        showcaseYaw = (showcaseYaw + delta) % 360.0F;
+    }
+
+    private static void adjustPitch(float delta) {
+        showcasePitch = Math.max(-60.0F, Math.min(60.0F, showcasePitch + delta));
+    }
+
+    private static void adjustZoom(float factor) {
+        showcaseZoom = Math.max(0.4F, Math.min(2.5F, showcaseZoom * factor));
     }
 
     @Override
@@ -90,6 +118,26 @@ public final class TaczMenuScreen extends Screen {
         }
 
         int bottomY = height - 30;
+        // 展示姿态控制（观赏模型）：旋转 / 缩放
+        int midY = bottomY - 24;
+        addRenderableWidget(Button.builder(Component.literal("旋转 ◀"),
+                        b -> adjustYaw(-15.0F)).bounds(width / 2 - 235, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("旋转 ▶"),
+                        b -> adjustYaw(15.0F)).bounds(width / 2 - 175, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("俯仰 ▲"),
+                        b -> adjustPitch(10.0F)).bounds(width / 2 - 115, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("俯仰 ▼"),
+                        b -> adjustPitch(-10.0F)).bounds(width / 2 - 55, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("缩小"),
+                        b -> adjustZoom(1 / 1.15F)).bounds(width / 2 + 5, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("放大"),
+                        b -> adjustZoom(1.15F)).bounds(width / 2 + 65, midY, 55, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("复位视角"),
+                        b -> {
+                            showcaseYaw = 0;
+                            showcasePitch = 0;
+                            showcaseZoom = 1.0F;
+                        }).bounds(width / 2 + 125, midY, 110, 20).build());
         addRenderableWidget(Button.builder(
                         Component.literal("恢复默认（按资源包顺序）"),
                         b -> {

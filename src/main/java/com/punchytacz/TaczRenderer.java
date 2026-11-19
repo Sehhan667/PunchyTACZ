@@ -373,8 +373,23 @@ public final class TaczRenderer {
         }
         stateMachine.processContextIfExist(context -> context.setPartialTicks(partialTick));
 
-        triggerForClip(runtime, clip);
-        triggerMovement(runtime, player);
+        boolean showcase = TaczMenuScreen.isOpen();
+        if (showcase) {
+            // 展示姿态（菜单观赏模型）：冻结输入与动作轨道，只留 base 的 static_idle；
+            // pause/stop 幂等，每帧调用安全。static_idle 暂停后停在当前进度（≈首帧姿态）。
+            MeleeAnimationStateContext context = stateMachine.getContext();
+            if (context != null) {
+                context.stopAnimation(context.getTrack(MeleeAnimationStateMachine.STATIC_TRACK_LINE,
+                        MeleeAnimationStateMachine.MAIN_TRACK));
+                context.stopAnimation(context.getTrack(MeleeAnimationStateMachine.BLENDING_TRACK_LINE,
+                        MeleeAnimationStateMachine.MOVEMENT_TRACK));
+                context.pauseAnimation(context.getTrack(MeleeAnimationStateMachine.STATIC_TRACK_LINE,
+                        MeleeAnimationStateMachine.BASE_TRACK));
+            }
+        } else {
+            triggerForClip(runtime, clip);
+            triggerMovement(runtime, player);
+        }
         // 清除上一帧的姿态再更新（TACZ 每帧渲染后清理，这里放在更新前，避免多次提交时互相覆盖）
         runtime.model.cleanAnimationTransform();
         runtime.model.cameraRotation.identity();
@@ -383,26 +398,39 @@ public final class TaczRenderer {
         playAnimSounds(runtime);
 
         BedrockModel model = runtime.model;
-        // TACZ renderFirstPerson：先做视角摇摆
-        float xRotOffset = Mth.lerp(partialTick, player.xBobO, player.xBob);
-        float yRotOffset = Mth.lerp(partialTick, player.yBobO, player.yBob);
-        final float xRot = player.getViewXRot(partialTick) - xRotOffset;
-        final float yRot = player.getViewYRot(partialTick) - yRotOffset;
+        if (showcase) {
+            // 展示姿态：跳过视角摇摆/镜头动画，把菜单里的旋转与缩放应用到 root 骨骼
+            BedrockPart showcaseRoot = model.parts.get("root");
+            if (showcaseRoot != null) {
+                showcaseRoot.additionalQuaternion.mul(Axis.YP.rotationDegrees(TaczMenuScreen.showcaseYaw()));
+                showcaseRoot.additionalQuaternion.mul(Axis.XP.rotationDegrees(TaczMenuScreen.showcasePitch()));
+                float zoom = TaczMenuScreen.showcaseZoom();
+                showcaseRoot.xScale *= zoom;
+                showcaseRoot.yScale *= zoom;
+                showcaseRoot.zScale *= zoom;
+            }
+        } else {
+            // TACZ renderFirstPerson：先做视角摇摆
+            float xRotOffset = Mth.lerp(partialTick, player.xBobO, player.xBob);
+            float yRotOffset = Mth.lerp(partialTick, player.yBobO, player.yBob);
+            final float xRot = player.getViewXRot(partialTick) - xRotOffset;
+            final float yRot = player.getViewYRot(partialTick) - yRotOffset;
 
-        // TACZ 在状态机更新后、渲染前给 root 骨骼叠加视角摆动
-        BedrockPart rootPart = model.parts.get("root");
-        if (rootPart != null) {
-            float swayX = (float) Math.tanh(xRot / 25F) * 25F;
-            float swayY = (float) Math.tanh(yRot / 25F) * 25F;
-            rootPart.offsetX += swayY * 0.1F / 16F / 3F;
-            rootPart.offsetY += -swayX * 0.1F / 16F / 3F;
-            rootPart.additionalQuaternion.mul(Axis.XP.rotationDegrees(swayX * 0.05F));
-            rootPart.additionalQuaternion.mul(Axis.YP.rotationDegrees(swayY * 0.05F));
-        }
+            // TACZ 在状态机更新后、渲染前给 root 骨骼叠加视角摆动
+            BedrockPart rootPart = model.parts.get("root");
+            if (rootPart != null) {
+                float swayX = (float) Math.tanh(xRot / 25F) * 25F;
+                float swayY = (float) Math.tanh(yRot / 25F) * 25F;
+                rootPart.offsetX += swayY * 0.1F / 16F / 3F;
+                rootPart.offsetY += -swayX * 0.1F / 16F / 3F;
+                rootPart.additionalQuaternion.mul(Axis.XP.rotationDegrees(swayX * 0.05F));
+                rootPart.additionalQuaternion.mul(Axis.YP.rotationDegrees(swayY * 0.05F));
+            }
 
-        // TACZ applyItemInHandCameraAnimation：camera 骨骼旋转叠加到手部空间（受“视角摇晃”设置控制）
-        if (bobView()) {
-            stack.mulPose(new Matrix4f().rotation(model.cameraRotation));
+            // TACZ applyItemInHandCameraAnimation：camera 骨骼旋转叠加到手部空间（受“视角摇晃”设置控制）
+            if (bobView()) {
+                stack.mulPose(new Matrix4f().rotation(model.cameraRotation));
+            }
         }
         model.cameraRotation.identity();
         // TACZ AnimateGeoItemRenderer.renderFirstPerson：
