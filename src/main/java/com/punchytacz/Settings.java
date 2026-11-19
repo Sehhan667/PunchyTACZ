@@ -47,21 +47,19 @@ public final class Settings {
     }
 
     /**
-     * 诊断：**不改定位**、只改「哪个面拿哪个 UV / 哪一侧是外面」。
+     * **修复项（默认开）**：这套刀包的逐面 UV 里，east / west 两个键与我们的面朝向约定正好互换。
      * <p>
-     * 用户实测外表面黑、内表面正常，而离线统计朝外那面是亮的 —— 两者互为镜像，
-     * 说明我们画出来的面和数据里标的面对调了。这里几个值分别对调一处，逐个试。
+     * 依据（离线实测 + 游戏内验证）：
+     * <ul>
+     *   <li>按原约定采样时 left.east=104.6（亮）/ left.west=20.6（黑），right.west=105.7 / right.east=19.3，
+     *       两半的「朝外面」在数据里是亮面；</li>
+     *   <li>但游戏里画出来的外表面是黑的、透过缝隙能看到正常颜色 —— 即实际贴到外面的是暗面；</li>
+     *   <li>把 east / west 的 UV 条目对调（几何位置与朝向都不变）后刀身恢复正常。</li>
+     * </ul>
+     * 所以这不是贴图错、不是光照错、也不是提交路径错，而是**查 UV 时的方向映射和数据里的键名对不上**。
+     * 留一个开关只是为了以后遇到不遵守这套约定的其它包时能关掉。
      */
-    public enum UvMode {
-        /** 原样 */
-        NORMAL,
-        /** 整个模型在模型空间沿 X 镜像（scale(-1,1,1)，绕模型原点，位移影响很小） */
-        MIRROR_X,
-        /** east ↔ west 的 UV 条目对调（刀的两个大侧面） */
-        SWAP_EW,
-        /** up ↔ down 的 UV 条目对调 */
-        SWAP_UD
-    }
+    public static boolean swapEastWest = true;
 
     /**
      * 渲染管线：VANILLA 走原版 entity 管线，其余三个走 {@link ItemPipeline} 自建管线。
@@ -148,7 +146,6 @@ public final class Settings {
     public static Filter filter = Filter.NEAREST;
     public static Half half = Half.BOTH;
     public static Flip flip = Flip.ZP180;
-    public static UvMode uvMode = UvMode.NORMAL;
     public static Pipeline pipeline = Pipeline.VANILLA;
     /** 自建管线里是否剔除背面（默认不剔除，和原版 CUTOUT 一致） */
     public static boolean cull = false;
@@ -178,7 +175,7 @@ public final class Settings {
             half = readEnum(Half.class, p.getProperty("half"), half);
             faceDebug = readEnum(FaceDebug.class, p.getProperty("faceDebug"), faceDebug);
             flip = readEnum(Flip.class, p.getProperty("flip"), flip);
-            uvMode = readEnum(UvMode.class, p.getProperty("uvMode"), uvMode);
+            swapEastWest = Boolean.parseBoolean(p.getProperty("swapEastWest", String.valueOf(swapEastWest)));
             pipeline = readEnum(Pipeline.class, p.getProperty("pipeline"), pipeline);
             cull = Boolean.parseBoolean(p.getProperty("cull", String.valueOf(cull)));
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
@@ -208,7 +205,7 @@ public final class Settings {
         p.setProperty("half", half.name());
         p.setProperty("faceDebug", faceDebug.name());
         p.setProperty("flip", flip.name());
-        p.setProperty("uvMode", uvMode.name());
+        p.setProperty("swapEastWest", String.valueOf(swapEastWest));
         p.setProperty("pipeline", pipeline.name());
         p.setProperty("cull", String.valueOf(cull));
         p.setProperty("submitGeo", String.valueOf(submitGeo));

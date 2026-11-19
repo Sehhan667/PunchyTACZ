@@ -85,15 +85,16 @@ public class BedrockCubePerFace implements BedrockCube {
         return new BedrockPolygon(positionsIn, u1, v1, u2, v2, texWidth, texHeight, false, direction);
     }
 
-    /** 诊断用：把「查哪个 UV 条目」的方向对调，几何位置和朝向不变 */
+    /**
+     * **固定对调 east / west 的 UV 条目**（见 {@code Settings.swapEastWest} 的说明）。
+     * 几何位置与朝向不变，只改「查哪个 UV 条目」；关闭开关即恢复原约定。
+     */
     private static Direction mapLookup(Direction direction) {
-        return switch (com.punchytacz.Settings.uvMode) {
-            case SWAP_EW -> direction == Direction.EAST ? Direction.WEST
-                    : direction == Direction.WEST ? Direction.EAST : direction;
-            case SWAP_UD -> direction == Direction.UP ? Direction.DOWN
-                    : direction == Direction.DOWN ? Direction.UP : direction;
-            default -> direction;
-        };
+        if (!com.punchytacz.Settings.swapEastWest) {
+            return direction;
+        }
+        return direction == Direction.EAST ? Direction.WEST
+                : direction == Direction.WEST ? Direction.EAST : direction;
     }
 
     @Override

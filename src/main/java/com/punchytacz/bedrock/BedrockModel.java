@@ -157,17 +157,8 @@ public class BedrockModel {
     /** @param color 打包好的 ARGB 顶点颜色（通常是 0xFFFFFFFF） */
     public void render(PoseStack poseStack, VertexConsumer consumer, int light, int overlay,
                        int color, Predicate<String> boneFilter) {
-        boolean mirror = com.punchytacz.Settings.uvMode == com.punchytacz.Settings.UvMode.MIRROR_X;
-        if (mirror) {
-            // 在模型空间沿 X 镜像：模型几何大致以 x=0 为中心，位移影响很小，但正反面会互换
-            poseStack.pushPose();
-            poseStack.scale(-1.0F, 1.0F, 1.0F);
-        }
         for (BedrockPart part : roots) {
             part.render(poseStack, consumer, light, overlay, color, boneFilter);
-        }
-        if (mirror) {
-            poseStack.popPose();
         }
     }
 

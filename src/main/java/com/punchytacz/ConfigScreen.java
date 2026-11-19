@@ -55,12 +55,12 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.cull = v)
                 .build());
 
-        render.addEntry(eb.startEnumSelector(Component.literal("UV / 正反面（诊断）"), Settings.UvMode.class, Settings.uvMode)
-                .setDefaultValue(Settings.UvMode.NORMAL)
-                .setTooltip(Component.literal("不改定位，只改「哪个面拿哪个 UV」：\n"
-                        + "MIRROR_X=模型沿 X 镜像；SWAP_EW=east/west 的 UV 对调；SWAP_UD=up/down 对调。\n"
+        render.addEntry(eb.startBooleanToggle(Component.literal("对调 east/west 的 UV（修复项）"), Settings.swapEastWest)
+                .setDefaultValue(true)
+                .setTooltip(Component.literal("这套包的逐面 UV 里 east/west 两个键与我们的面朝向约定互换，\n"
+                        + "不对调刀身就是黑的。遇到不遵守这套约定的包时才需要关掉。\n"
                         + "切换后会重新解析模型。"))
-                .setSaveConsumer(v -> Settings.uvMode = v)
+                .setSaveConsumer(v -> Settings.swapEastWest = v)
                 .build());
 
         render.addEntry(eb.startEnumSelector(Component.literal("翻转方式（诊断）"), Settings.Flip.class, Settings.flip)

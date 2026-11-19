@@ -150,7 +150,7 @@ public final class TaczRenderer {
                             + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame
                             + " rt=" + Settings.mode + "/" + Settings.filter
                             + " half=" + Settings.half + " face=" + Settings.faceDebug
-                            + " flip=" + Settings.flip + " uv=" + Settings.uvMode
+                            + " flip=" + Settings.flip + " swapEW=" + Settings.swapEastWest
                             + " pipe=" + Settings.pipeline + "/cull=" + Settings.cull
                             + " submit=" + Settings.submitGeo);
         }
@@ -242,7 +242,11 @@ public final class TaczRenderer {
         boolean leftArm = draw.leftArm();
         String option = selectedPackOption(stack);
         if (!TaczPacks.isTaczPackOption(option)) {
-            // 这只手当前选的是别的动画包：让 Punchy 自己画，并立刻停掉旧 rig
+            // 这只手当前选的是别的动画包：让 Punchy 自己画，并立刻停掉旧 rig。
+            // 【回退路径】PunchyApi.drawItem 返回 true 表示"这件物品由本模组接管、Punchy 不画"；
+            // 返回 false 则 Punchy 用它自己的 model_parts_items 定义（geo/texture/display）绘制。
+            // 所以：其它近战武器、包里没写 tacz 块、或 clip 找不到时，都会走这里交还给 Punchy，
+            // Punchy 必须能拿到模型（这也是资源包里每个 model_parts_items 定义都要有 display 的原因）。
             clearHand(leftArm);
             if (leftArm) {
                 taczOwnsLeft = false;
