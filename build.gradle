@@ -42,6 +42,8 @@ unimined.minecraft {
 dependencies {
     // Punchy 仅编译期引用（不打包、不分发）
     compileOnly files(new File(project.punchy_jar))
+    // Fabric 模块（仅编译期）：按键注册与客户端 tick 事件（运行时由 fabric-api 提供）
+    compileOnly fileTree(dir: 'libs', include: ['fabric-key-mapping-api-v1*.jar', 'fabric-lifecycle-events-v1*.jar', 'fabric-api-base*.jar'])
     // 配置界面：仅编译期，运行时由玩家安装的 mod 提供（缺失时自动降级，不影响主功能）
     compileOnly files(new File(project.cloth_config_jar))
     compileOnly files(new File(project.modmenu_jar))
