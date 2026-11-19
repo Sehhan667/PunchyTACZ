@@ -36,8 +36,68 @@ public final class Settings {
         LINEAR
     }
 
+    /**
+     * 诊断：模型由 left / right 两套镜像几何叠成，检查它们是不是一黑一彩。
+     * BOTH = 正常绘制。
+     */
+    public enum Half {
+        BOTH,
+        LEFT_ONLY,
+        RIGHT_ONLY
+    }
+
+    /**
+     * 面朝向调试：只绘制指定 {@link net.minecraft.core.Direction} 的面，并给这批面输出纯色。
+     * <p>
+     * 选中某个方向时，UV 会被钉在贴图里一个**纯白像素**上（见 {@link #WHITE_U}/{@link #WHITE_V}），
+     * 这样即使那块贴图是黑的，画面上也能看到纯色，用来判断这个方向的面到底在刀身的哪一侧。
+     */
+    public enum FaceDebug {
+        NONE(-1, 0xFFFFFFFF),
+        /** 红 */
+        EAST(net.minecraft.core.Direction.EAST.ordinal(), 0xFFFF3030),
+        /** 绿 */
+        WEST(net.minecraft.core.Direction.WEST.ordinal(), 0xFF30FF30),
+        /** 蓝 */
+        UP(net.minecraft.core.Direction.UP.ordinal(), 0xFF4040FF),
+        /** 黄 */
+        DOWN(net.minecraft.core.Direction.DOWN.ordinal(), 0xFFFFFF30),
+        /** 青 */
+        NORTH(net.minecraft.core.Direction.NORTH.ordinal(), 0xFF30FFFF),
+        /** 品红 */
+        SOUTH(net.minecraft.core.Direction.SOUTH.ordinal(), 0xFFFF30FF);
+
+        /** observer_uv.png 里坐标 (153,194) 的像素，3x3 邻域全是纯白 (255,255,255,255) */
+        public static final float WHITE_U = 0.599609F;
+        public static final float WHITE_V = 0.759766F;
+
+        public final int faceId;
+        public final int color;
+
+        FaceDebug(int faceId, int color) {
+            this.faceId = faceId;
+            this.color = color;
+        }
+
+        /** 当前要过滤的方向（Direction.ordinal），-1 表示不过滤 */
+        public static int selectedFace() {
+            return faceDebug.faceId;
+        }
+
+        public static int colorOf(int faceId) {
+            for (FaceDebug value : values()) {
+                if (value.faceId == faceId) {
+                    return value.color;
+                }
+            }
+            return 0xFFFFFFFF;
+        }
+    }
+
     public static Mode mode = Mode.CUTOUT;
     public static Filter filter = Filter.NEAREST;
+    public static Half half = Half.BOTH;
+    public static FaceDebug faceDebug = FaceDebug.NONE;
     /** 是否提交武器几何（关掉只剩手臂，用于确认画面上的刀确实是我们画的） */
     public static boolean submitGeo = true;
     public static boolean renderArms = true;
@@ -60,6 +120,8 @@ public final class Settings {
             p.load(in);
             mode = readEnum(Mode.class, p.getProperty("mode"), mode);
             filter = readEnum(Filter.class, p.getProperty("filter"), filter);
+            half = readEnum(Half.class, p.getProperty("half"), half);
+            faceDebug = readEnum(FaceDebug.class, p.getProperty("faceDebug"), faceDebug);
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
@@ -84,6 +146,8 @@ public final class Settings {
         Properties p = new Properties();
         p.setProperty("mode", mode.name());
         p.setProperty("filter", filter.name());
+        p.setProperty("half", half.name());
+        p.setProperty("faceDebug", faceDebug.name());
         p.setProperty("submitGeo", String.valueOf(submitGeo));
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));

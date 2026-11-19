@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.punchytacz.bedrock.BedrockModel;
 import com.punchytacz.bedrock.BedrockPart;
+import com.punchytacz.diag.SubmitProbe;
 import com.punchytacz.statemachine.MeleeAnimationStateContext;
 import com.punchytacz.statemachine.MeleeAnimationStateMachine;
 import net.minecraft.client.Minecraft;
@@ -78,6 +79,9 @@ public final class TaczRenderer {
         if (Settings.punchyRender) {
             return;
         }
+        // 【诊断】每帧统计 submit / 几何回调执行 / drawItem 回调次数（详见 SubmitProbe）
+        SubmitProbe.enabled = Settings.logState;
+        SubmitProbe.beginFrame();
         frameId++;
         expireStale(activeRight);
         expireStale(activeLeft);
@@ -144,7 +148,9 @@ public final class TaczRenderer {
             logThrottled(lastStateLogNs, v -> lastStateLogNs = v,
                     "punchytacz: frame#" + frameId + " clip=" + clipName(clip)
                             + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame
-                            + " rt=" + Settings.mode + "/" + Settings.filter);
+                            + " rt=" + Settings.mode + "/" + Settings.filter
+                            + " half=" + Settings.half + " face=" + Settings.faceDebug
+                            + " submit=" + Settings.submitGeo);
         }
     }
 
@@ -223,6 +229,7 @@ public final class TaczRenderer {
     }
 
     public static boolean draw(PunchyApi.ItemDraw draw) {
+        SubmitProbe.drawCall();
         if (Settings.punchyRender) {
             // 交回 Punchy：它用自己的 geo + display + clip 画
             return false;
@@ -390,13 +397,20 @@ public final class TaczRenderer {
         }
         if (Settings.submitGeo) {
             Identifier texture = entry.rig().texture();
-            sink.submitCustomGeometry(stack, ItemRenderType.of(texture), (pose, consumer) -> {
-                PoseStack local = new PoseStack();
-                local.mulPose(pose.pose());
-                // 0xFFFFFFFF = 不额外染色；贴图 alpha 只有 0/255，CUTOUT 下就是硬剪裁
-                model.render(local, consumer, effectiveLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF,
-                        name -> !isSkinBone(name));
-            });
+            SubmitProbe.ours = true;
+            try {
+                sink.submitCustomGeometry(stack, ItemRenderType.of(texture), (pose, consumer) -> {
+                    // 每次绘制阶段真正执行几何回调都会自增：一帧 >1 就说明同一条提交被画了两次
+                    SubmitProbe.ourDraw();
+                    PoseStack local = new PoseStack();
+                    local.mulPose(pose.pose());
+                    // 0xFFFFFFFF = 不额外染色；贴图 alpha 只有 0/255，CUTOUT 下就是硬剪裁
+                    model.render(local, consumer, effectiveLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF,
+                            name -> !isSkinBone(name) && allowHalf(name));
+                });
+            } finally {
+                SubmitProbe.ours = false;
+            }
         }
         return true;
     }
@@ -538,6 +552,15 @@ public final class TaczRenderer {
     /** TACZ 手里那两块手模用玩家真实手臂，不是武器贴图 */
     private static boolean isSkinBone(String name) {
         return name.contains("hand") && name.endsWith("_pos");
+    }
+
+    /** 诊断用：模型由 left / right 两套镜像几何叠成，可以只画其中一套 */
+    private static boolean allowHalf(String name) {
+        return switch (Settings.half) {
+            case BOTH -> true;
+            case LEFT_ONLY -> !"right".equals(name);
+            case RIGHT_ONLY -> !"left".equals(name);
+        };
     }
 
     private static void renderArm(PoseStack poseStack, SubmitNodeCollector sink, int light, Identifier skin,

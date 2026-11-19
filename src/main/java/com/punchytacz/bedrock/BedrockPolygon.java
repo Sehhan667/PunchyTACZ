@@ -8,6 +8,8 @@ import org.joml.Vector3f;
 public class BedrockPolygon {
     public final BedrockVertex[] vertices;
     public final Vector3f normal;
+    /** 本面在 cube 上朝向哪一边（调试用：按方向过滤/染色） */
+    public final Direction face;
 
     public static void bakeTransform(BedrockPolygon[] polygons, Matrix4fc transform, BedrockVertex... corners) {
         for (BedrockVertex corner : corners) {
@@ -23,6 +25,7 @@ public class BedrockPolygon {
     public BedrockPolygon(BedrockVertex[] vertices, float u1, float v1, float u2, float v2,
                           float texWidth, float texHeight, boolean mirror, Direction direction) {
         this.vertices = vertices;
+        this.face = direction;
         // 基岩 UV 以贴图像素为单位，这里一次换算成 0..1（原实现里的 f/f1 恒为 0，已去掉）
         vertices[0] = vertices[0].remap(u2 / texWidth, v1 / texHeight);
         vertices[1] = vertices[1].remap(u1 / texWidth, v1 / texHeight);
@@ -44,6 +47,7 @@ public class BedrockPolygon {
 
     /** 写入静态网格：位置从模型单位（1/16 格）换算成方块 */
     public void bake(QuadMesh mesh) {
+        mesh.beginQuad(this.face.ordinal());
         for (BedrockVertex vertex : this.vertices) {
             mesh.vertex(vertex.pos.x() / 16.0F, vertex.pos.y() / 16.0F, vertex.pos.z() / 16.0F,
                     this.normal.x, this.normal.y, this.normal.z, vertex.u, vertex.v);

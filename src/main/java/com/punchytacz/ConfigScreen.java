@@ -33,6 +33,21 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.filter = v)
                 .build());
 
+        render.addEntry(eb.startEnumSelector(Component.literal("只画半边（诊断）"), Settings.Half.class, Settings.half)
+                .setDefaultValue(Settings.Half.BOTH)
+                .setTooltip(Component.literal("模型由 left/right 两套镜像几何叠成。\n"
+                        + "只画一边可以确认黑色是不是另一边画出来的。"))
+                .setSaveConsumer(v -> Settings.half = v)
+                .build());
+
+        render.addEntry(eb.startEnumSelector(Component.literal("面朝向调试（只画一个方向）"), Settings.FaceDebug.class, Settings.faceDebug)
+                .setDefaultValue(Settings.FaceDebug.NONE)
+                .setTooltip(Component.literal("只绘制指定方向的面并输出纯色：\n"
+                        + "EAST=红 WEST=绿 UP=蓝 DOWN=黄 NORTH=青 SOUTH=品红。\n"
+                        + "用来确认该方向的面在刀身的哪一侧。"))
+                .setSaveConsumer(v -> Settings.faceDebug = v)
+                .build());
+
         render.addEntry(eb.startBooleanToggle(Component.literal("提交武器几何"), Settings.submitGeo)
                 .setDefaultValue(true)
                 .setTooltip(Component.literal("关掉后只剩手臂，用于确认画面上的刀是我们画的"))

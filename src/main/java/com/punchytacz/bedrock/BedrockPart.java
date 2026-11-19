@@ -104,7 +104,14 @@ public class BedrockPart {
         Matrix3f n = pose.normal();
         float[] d = mesh.data();
         int count = mesh.quads();
+        // 朝向调试：只画某个方向的面，并把 UV 钉在一个纯白像素上，让顶点纯色不受贴图影响
+        final int debugFace = com.punchytacz.Settings.FaceDebug.selectedFace();
         for (int q = 0; q < count; q++) {
+            int faceId = mesh.faceId(q);
+            if (debugFace >= 0 && faceId != debugFace) {
+                continue;
+            }
+            int quadColor = debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.colorOf(faceId) : color;
             int base = q * QuadMesh.FLOATS_PER_QUAD;
             float nx = d[base + 3];
             float ny = d[base + 4];
@@ -129,7 +136,10 @@ public class BedrockPart {
                         m.m00() * x + m.m10() * y + m.m20() * z + m.m30(),
                         m.m01() * x + m.m11() * y + m.m21() * z + m.m31(),
                         m.m02() * x + m.m12() * y + m.m22() * z + m.m32(),
-                        color, d[o + 6], d[o + 7], overlay, light, tx, ty, tz);
+                        quadColor,
+                        debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.WHITE_U : d[o + 6],
+                        debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.WHITE_V : d[o + 7],
+                        overlay, light, tx, ty, tz);
             }
         }
     }
