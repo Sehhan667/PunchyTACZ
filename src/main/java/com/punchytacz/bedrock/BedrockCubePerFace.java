@@ -74,7 +74,7 @@ public class BedrockCubePerFace implements BedrockCube {
     /** 该方向没有 uv 条目时返回 null（原实现用一块退化面占位，结果是一样的：不产生像素） */
     private BedrockPolygon getTexturedQuad(BedrockVertex[] positionsIn, float texWidth, float texHeight,
                                            Direction direction, FaceUVsItem faces) {
-        FaceItem face = faces.getFace(direction);
+        FaceItem face = faces.getFace(mapLookup(direction));
         if (face == FaceItem.EMPTY) {
             return null;
         }
@@ -83,6 +83,17 @@ public class BedrockCubePerFace implements BedrockCube {
         float u2 = u1 + face.getUvSize()[0];
         float v2 = v1 + face.getUvSize()[1];
         return new BedrockPolygon(positionsIn, u1, v1, u2, v2, texWidth, texHeight, false, direction);
+    }
+
+    /** 诊断用：把「查哪个 UV 条目」的方向对调，几何位置和朝向不变 */
+    private static Direction mapLookup(Direction direction) {
+        return switch (com.punchytacz.Settings.uvMode) {
+            case SWAP_EW -> direction == Direction.EAST ? Direction.WEST
+                    : direction == Direction.WEST ? Direction.EAST : direction;
+            case SWAP_UD -> direction == Direction.UP ? Direction.DOWN
+                    : direction == Direction.DOWN ? Direction.UP : direction;
+            default -> direction;
+        };
     }
 
     @Override

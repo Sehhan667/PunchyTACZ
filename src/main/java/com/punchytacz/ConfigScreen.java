@@ -40,6 +40,14 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.half = v)
                 .build());
 
+        render.addEntry(eb.startEnumSelector(Component.literal("UV / 正反面（诊断）"), Settings.UvMode.class, Settings.uvMode)
+                .setDefaultValue(Settings.UvMode.NORMAL)
+                .setTooltip(Component.literal("不改定位，只改「哪个面拿哪个 UV」：\n"
+                        + "MIRROR_X=模型沿 X 镜像；SWAP_EW=east/west 的 UV 对调；SWAP_UD=up/down 对调。\n"
+                        + "切换后会重新解析模型。"))
+                .setSaveConsumer(v -> Settings.uvMode = v)
+                .build());
+
         render.addEntry(eb.startEnumSelector(Component.literal("翻转方式（诊断）"), Settings.Flip.class, Settings.flip)
                 .setDefaultValue(Settings.Flip.ZP180)
                 .setTooltip(Component.literal("TACZ 原本用 ZP180 把基岩模型翻正；\n"
@@ -77,7 +85,12 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.logState = v)
                 .build());
 
-        builder.setSavingRunnable(Settings::save);
+        builder.setSavingRunnable(() -> {
+            Settings.save();
+            // SWAP_EW / SWAP_UD 在烘焙期生效，保存后重新解析模型
+            TaczPacks.reload();
+            TaczRenderer.resetActive();
+        });
         return builder.build();
     }
 }

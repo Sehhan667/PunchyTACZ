@@ -47,6 +47,23 @@ public final class Settings {
     }
 
     /**
+     * 诊断：**不改定位**、只改「哪个面拿哪个 UV / 哪一侧是外面」。
+     * <p>
+     * 用户实测外表面黑、内表面正常，而离线统计朝外那面是亮的 —— 两者互为镜像，
+     * 说明我们画出来的面和数据里标的面对调了。这里几个值分别对调一处，逐个试。
+     */
+    public enum UvMode {
+        /** 原样 */
+        NORMAL,
+        /** 整个模型在模型空间沿 X 镜像（scale(-1,1,1)，绕模型原点，位移影响很小） */
+        MIRROR_X,
+        /** east ↔ west 的 UV 条目对调（刀的两个大侧面） */
+        SWAP_EW,
+        /** up ↔ down 的 UV 条目对调 */
+        SWAP_UD
+    }
+
+    /**
      * 诊断：基岩模型上下翻转用的那一步（TACZ 原本是 {@code Axis.ZP 180}）。
      * <p>
      * 180° 绕 Z 同时也是绕模型长轴滚一圈，所以它会顺带把「刀的正反面」对调。
@@ -114,6 +131,7 @@ public final class Settings {
     public static Filter filter = Filter.NEAREST;
     public static Half half = Half.BOTH;
     public static Flip flip = Flip.ZP180;
+    public static UvMode uvMode = UvMode.NORMAL;
     public static FaceDebug faceDebug = FaceDebug.NONE;
     /** 是否提交武器几何（关掉只剩手臂，用于确认画面上的刀确实是我们画的） */
     public static boolean submitGeo = true;
@@ -140,6 +158,7 @@ public final class Settings {
             half = readEnum(Half.class, p.getProperty("half"), half);
             faceDebug = readEnum(FaceDebug.class, p.getProperty("faceDebug"), faceDebug);
             flip = readEnum(Flip.class, p.getProperty("flip"), flip);
+            uvMode = readEnum(UvMode.class, p.getProperty("uvMode"), uvMode);
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
@@ -167,6 +186,7 @@ public final class Settings {
         p.setProperty("half", half.name());
         p.setProperty("faceDebug", faceDebug.name());
         p.setProperty("flip", flip.name());
+        p.setProperty("uvMode", uvMode.name());
         p.setProperty("submitGeo", String.valueOf(submitGeo));
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));

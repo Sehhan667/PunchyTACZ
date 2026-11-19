@@ -150,7 +150,7 @@ public final class TaczRenderer {
                             + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame
                             + " rt=" + Settings.mode + "/" + Settings.filter
                             + " half=" + Settings.half + " face=" + Settings.faceDebug
-                            + " flip=" + Settings.flip
+                            + " flip=" + Settings.flip + " uv=" + Settings.uvMode
                             + " submit=" + Settings.submitGeo);
         }
     }
