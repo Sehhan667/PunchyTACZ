@@ -33,6 +33,15 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
     private final RunState runState = new RunState();
     private final WalkState walkState = new WalkState();
 
+    /**
+     * annihil_state_machine.lua 的 {@code model_mode}（0=Devil，1=Angel）：
+     * {@code initialize} 时随机选定，之后 {@code getAnim()} 给所有动画名追加 {@code _angel}；
+     * 可见性由 {@code static_idle(_angel)} 的 scale 关键帧负责（把另一套几何缩到 0，
+     * 我们的 Scale 监听器 + {@code BedrockPart} 对 scale=0 整枝跳过会生效）。
+     */
+    private int modelMode;
+    private boolean hasAngelVariants;
+
     public MeleeAnimationStateMachine(AnimationController animationController) {
         super(animationController);
         setStatesSupplier(this::initialStates);
@@ -49,10 +58,38 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
             context.ensureTrackLineSize(2);
             context.ensureTracksAmount(STATIC_TRACK_LINE, 2);
             context.ensureTracksAmount(BLENDING_TRACK_LINE, 1);
+            // 与 annihil_state_machine.lua 一致：双形态在 initialize 时随机
+            hasAngelVariants = context.hasAnimationPrototype("static_idle_angel");
+            modelMode = hasAngelVariants
+                    ? java.util.concurrent.ThreadLocalRandom.current().nextInt(2)
+                    : 0;
         }
         runState.mode = -1;
         walkState.mode = -1;
         super.initialize();
+    }
+
+    /** 对应 annihil_state_machine.lua 的 {@code getAnim(baseName)}：Angel 形态追加 "_angel" */
+    private String anim(String name) {
+        if (modelMode == 1 && hasAngelVariants) {
+            String angel = name + "_angel";
+            MeleeAnimationStateContext context = getContext();
+            if (context != null && context.hasAnimationPrototype(angel)) {
+                return angel;
+            }
+        }
+        return name;
+    }
+
+    /** annihil_state_machine.lua 的 draw/inspect 会随机播放 _1 变体（不存在时退回基础版） */
+    private String randomVariant(String base, String alt) {
+        MeleeAnimationStateContext context = getContext();
+        if (context != null
+                && context.hasAnimationPrototype(anim(alt))
+                && java.util.concurrent.ThreadLocalRandom.current().nextBoolean()) {
+            return anim(alt);
+        }
+        return anim(base);
     }
 
     private void runPutAwayAnimation(MeleeAnimationStateContext context) {
@@ -70,7 +107,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
 
         @Override
         public void entryAction(MeleeAnimationStateContext context) {
-            context.runAnimation("static_idle", context.getTrack(STATIC_TRACK_LINE, BASE_TRACK),
+            context.runAnimation(anim("static_idle"), context.getTrack(STATIC_TRACK_LINE, BASE_TRACK),
                     false, ObjectAnim.PlayType.LOOP, 0f);
         }
 
@@ -101,7 +138,8 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
         @Override
         public AnimationState<MeleeAnimationStateContext> transition(MeleeAnimationStateContext context, String input) {
             if (INPUT_DRAW.equals(input)) {
-                context.runAnimation("draw", context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
+                context.runAnimation(randomVariant("draw", "draw_1"),
+                        context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
                         false, ObjectAnim.PlayType.PLAY_ONCE_STOP, 0f);
                 return mainIdleState;
             }
@@ -129,19 +167,21 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
                 return finalState;
             }
             if (INPUT_INSPECT.equals(input)) {
-                context.runAnimation("inspect", context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
+                context.runAnimation(randomVariant("inspect", "inspect_1"),
+                        context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
                         false, ObjectAnim.PlayType.PLAY_ONCE_STOP, 0.2f);
                 return this;
             }
             if (INPUT_ATTACK_LEFT.equals(input)) {
                 int counter = context.getActionCount("attack_left");
-                String animationName = "melee_" + (counter % 2 + 1);
+                // annihil/observer 的 lua：attack_index = (counter + 1) % 3，三连击循环
+                String animationName = "melee_" + (counter % 3 + 1);
                 context.runAnimation(animationName, context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
                         false, ObjectAnim.PlayType.PLAY_ONCE_STOP, 0.2f);
                 return this;
             }
             if (INPUT_ATTACK_RIGHT.equals(input)) {
-                context.runAnimation("melee_3", context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
+                context.runAnimation(anim("melee_3"), context.getTrack(STATIC_TRACK_LINE, MAIN_TRACK),
                         false, ObjectAnim.PlayType.PLAY_ONCE_STOP, 0.2f);
                 return this;
             }
@@ -203,18 +243,21 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
     private final class RunState implements AnimationState<MeleeAnimationStateContext> {
         private int mode = -1;
         private long time;
+        /** 这套包的动画普遍没有 run_hold（23 把武器全部缺失），起跳时 runAnimation 会静默 no-op */
+        private boolean hasRunHold = true;
 
         @Override
         public void entryAction(MeleeAnimationStateContext context) {
             mode = -1;
             time = context.getCurrentTimestamp();
-            context.runAnimation("run_start", context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
+            hasRunHold = context.hasAnimationPrototype("run_hold");
+            context.runAnimation(anim("run_start"), context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
                     true, ObjectAnim.PlayType.PLAY_ONCE_HOLD, 0.2f);
         }
 
         @Override
         public void exitAction(MeleeAnimationStateContext context) {
-            context.runAnimation("run_end", context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
+            context.runAnimation(anim("run_end"), context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK),
                     true, ObjectAnim.PlayType.PLAY_ONCE_HOLD, 0.3f);
         }
 
@@ -222,7 +265,7 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
         public void update(MeleeAnimationStateContext context) {
             int track = context.getTrack(BLENDING_TRACK_LINE, MOVEMENT_TRACK);
             if (context.isHolding(track)) {
-                context.runAnimation("run", track, true, ObjectAnim.PlayType.LOOP, 0.2f);
+                context.runAnimation(anim("run"), track, true, ObjectAnim.PlayType.LOOP, 0.2f);
                 mode = 0;
                 context.anchorWalkDist();
             }
@@ -232,12 +275,28 @@ public final class MeleeAnimationStateMachine extends AnimationStateMachine<Mele
             if (!context.isOnGround()) {
                 if (mode != 1) {
                     mode = 1;
-                    context.runAnimation("run_hold", track, true, ObjectAnim.PlayType.LOOP, 0.6f);
+                    if (hasRunHold) {
+                        context.runAnimation(anim("run_hold"), track, true, ObjectAnim.PlayType.LOOP, 0.6f);
+                        // 腾空期间 walkDist 仍在累积（含垂直位移），落地时重新锚定相位
+                        context.anchorWalkDist();
+                    }
+                }
+                if (!hasRunHold) {
+                    // 没有 run_hold 时**不要**在落地时重播 run：保持 run 继续播放并把相位
+                    // 锁到地面移动距离，起跳/落地瞬间相位连续。
+                    // 原实现在落地时重播 run 且相位取 walkDist%2/2（腾空期间已继续累积），
+                    // 相位跳变 → 用户看到的“脚着地/离地卡一下”。
+                    context.setAnimationProgress(track, (context.getWalkDist() % 2.0f) / 2.0f, true);
                 }
             } else {
                 if (mode != 0) {
                     mode = 0;
-                    context.runAnimation("run", track, true, ObjectAnim.PlayType.LOOP, 0.2f);
+                    if (hasRunHold) {
+                        context.runAnimation(anim("run"), track, true, ObjectAnim.PlayType.LOOP, 0.2f);
+                        // 配合重播的 run：相位从头开始，脚周期与落地时刻同步
+                        context.anchorWalkDist();
+                    }
+                    // 没有 run_hold 时 run 一直在距离锁相，无需重播
                 }
                 context.setAnimationProgress(track, (context.getWalkDist() % 2.0f) / 2.0f, true);
             }
