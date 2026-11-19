@@ -47,6 +47,22 @@ public final class Settings {
     }
 
     /**
+     * 诊断：基岩模型上下翻转用的那一步（TACZ 原本是 {@code Axis.ZP 180}）。
+     * <p>
+     * 180° 绕 Z 同时也是绕模型长轴滚一圈，所以它会顺带把「刀的正反面」对调。
+     * 若游戏里外表面是黑的、内表面正常，就说明这一滚的方向和数据对不上，
+     * 这里提供三态各试一次。
+     */
+    public enum Flip {
+        /** TACZ 原本的写法 */
+        ZP180,
+        /** 不做翻转（模型会上下颠倒，只看颜色） */
+        NONE,
+        /** 绕 Y 转 180° */
+        YP180
+    }
+
+    /**
      * 面朝向调试：只绘制指定 {@link net.minecraft.core.Direction} 的面，并给这批面输出纯色。
      * <p>
      * 选中某个方向时，UV 会被钉在贴图里一个**纯白像素**上（见 {@link #WHITE_U}/{@link #WHITE_V}），
@@ -97,6 +113,7 @@ public final class Settings {
     public static Mode mode = Mode.CUTOUT;
     public static Filter filter = Filter.NEAREST;
     public static Half half = Half.BOTH;
+    public static Flip flip = Flip.ZP180;
     public static FaceDebug faceDebug = FaceDebug.NONE;
     /** 是否提交武器几何（关掉只剩手臂，用于确认画面上的刀确实是我们画的） */
     public static boolean submitGeo = true;
@@ -122,6 +139,7 @@ public final class Settings {
             filter = readEnum(Filter.class, p.getProperty("filter"), filter);
             half = readEnum(Half.class, p.getProperty("half"), half);
             faceDebug = readEnum(FaceDebug.class, p.getProperty("faceDebug"), faceDebug);
+            flip = readEnum(Flip.class, p.getProperty("flip"), flip);
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
@@ -148,6 +166,7 @@ public final class Settings {
         p.setProperty("filter", filter.name());
         p.setProperty("half", half.name());
         p.setProperty("faceDebug", faceDebug.name());
+        p.setProperty("flip", flip.name());
         p.setProperty("submitGeo", String.valueOf(submitGeo));
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));

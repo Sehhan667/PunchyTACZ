@@ -40,6 +40,13 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.half = v)
                 .build());
 
+        render.addEntry(eb.startEnumSelector(Component.literal("翻转方式（诊断）"), Settings.Flip.class, Settings.flip)
+                .setDefaultValue(Settings.Flip.ZP180)
+                .setTooltip(Component.literal("TACZ 原本用 ZP180 把基岩模型翻正；\n"
+                        + "这一滚也会对调刀的正反面。NONE 会上下颠倒，只看颜色。"))
+                .setSaveConsumer(v -> Settings.flip = v)
+                .build());
+
         render.addEntry(eb.startEnumSelector(Component.literal("面朝向调试（只画一个方向）"), Settings.FaceDebug.class, Settings.faceDebug)
                 .setDefaultValue(Settings.FaceDebug.NONE)
                 .setTooltip(Component.literal("只绘制指定方向的面并输出纯色：\n"

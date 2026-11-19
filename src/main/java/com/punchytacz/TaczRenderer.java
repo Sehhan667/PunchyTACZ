@@ -150,6 +150,7 @@ public final class TaczRenderer {
                             + " hand=" + (leftArm ? "left" : "right") + " rendered=" + renderedThisFrame
                             + " rt=" + Settings.mode + "/" + Settings.filter
                             + " half=" + Settings.half + " face=" + Settings.faceDebug
+                            + " flip=" + Settings.flip
                             + " submit=" + Settings.submitGeo);
         }
     }
@@ -386,8 +387,14 @@ public final class TaczRenderer {
         // 基岩模型以 (0,24,0) 为渲染原点，先抬到模型原点，再翻转上下，
         // 然后用 idle_view 定位组的反相把模型锚到相机原点。
         stack.translate(0F, 1.5F, 0F);
-        // 26.3 的 PoseStack.rotate(Axis, float) 收的是弧度，180F 会被当成 180rad（≈233°）
-        stack.rotateDegrees(Axis.ZP, 180F);
+        // 基岩模型上下翻转（TACZ 原本就是 Axis.ZP 180，见 AnimateGeoItemRenderer.renderFirstPerson）。
+        // 这一步同时也是绕模型长轴滚 180°，会顺带对调刀的正反面，所以做成可切换用于诊断。
+        switch (Settings.flip) {
+            case ZP180 -> stack.rotateDegrees(Axis.ZP, 180F);
+            case YP180 -> stack.rotateDegrees(Axis.YP, 180F);
+            case NONE -> {
+            }
+        }
         applyIdleViewInverse(stack, model);
 
         // 手臂必须在模型几何体提交之前、用同一套骨骼姿态同步提交；
