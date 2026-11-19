@@ -151,6 +151,7 @@ public final class TaczRenderer {
                             + " rt=" + Settings.mode + "/" + Settings.filter
                             + " half=" + Settings.half + " face=" + Settings.faceDebug
                             + " flip=" + Settings.flip + " uv=" + Settings.uvMode
+                            + " pipe=" + Settings.pipeline + "/cull=" + Settings.cull
                             + " submit=" + Settings.submitGeo);
         }
     }

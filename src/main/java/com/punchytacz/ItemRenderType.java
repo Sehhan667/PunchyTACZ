@@ -37,12 +37,15 @@ public final class ItemRenderType {
     }
 
     public static RenderType of(Identifier texture) {
-        String key = Settings.mode.name() + '|' + Settings.filter.name() + '|' + texture;
+        String key = Settings.pipeline.name() + '|' + Settings.mode.name() + '|' + Settings.filter.name()
+                + '|' + Settings.cull + '|' + texture;
         RenderType cached = CACHE.get(key);
         if (cached != null) {
             return cached;
         }
-        RenderType made = build(texture);
+        RenderType made = Settings.pipeline == Settings.Pipeline.VANILLA
+                ? build(texture)
+                : buildOwn(texture);
         CACHE.put(key, made);
         return made;
     }
@@ -50,6 +53,40 @@ public final class ItemRenderType {
     /** 资源重载后清空，避免继续引用旧贴图 */
     public static void clear() {
         CACHE.clear();
+    }
+
+    /**
+     * 自建管线版本：pipeline 与剔除由 {@link ItemPipeline} 决定，
+     * EMISSIVE 变体不绑光照贴图/overlay（着色器里也没声明这两个 sampler）。
+     */
+    private static RenderType buildOwn(Identifier texture) {
+        try {
+            RenderPipeline pipeline = Settings.pipeline == Settings.Pipeline.FULLBRIGHT
+                    || Settings.pipeline == Settings.Pipeline.SOLID
+                    ? ItemPipeline.bright()
+                    : ItemPipeline.flat();
+            if (pipeline == null) {
+                return build(texture);
+            }
+            FilterMode filter = Settings.filter == Settings.Filter.NEAREST ? FilterMode.NEAREST : FilterMode.LINEAR;
+            RenderSetup.RenderSetupBuilder builder = RenderSetup.builder(pipeline)
+                    .withTexture("Sampler0", texture, () -> RenderSystem.getSamplerCache().getClampToEdge(filter));
+            if (Settings.pipeline == Settings.Pipeline.FLAT) {
+                builder.useLightmap().useOverlay();
+            }
+            RenderSetup setup = builder.createRenderSetup();
+            Method create = RenderType.class.getDeclaredMethod("create", String.class, RenderSetup.class);
+            create.setAccessible(true);
+            String name = "punchytacz_own/" + Settings.pipeline.name() + "/" + Settings.filter.name() + "/cull"
+                    + Settings.cull + "/" + texture.toString().replace(':', '_').replace('/', '_');
+            return (RenderType) create.invoke(null, name.toLowerCase(Locale.ROOT), setup);
+        } catch (Throwable t) {
+            if (!warned) {
+                warned = true;
+                LOG.warn("punchytacz: 自建管线 RenderType 失败，回退原版", t);
+            }
+            return build(texture);
+        }
     }
 
     private static RenderType build(Identifier texture) {

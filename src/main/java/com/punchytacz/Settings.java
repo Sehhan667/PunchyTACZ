@@ -64,6 +64,23 @@ public final class Settings {
     }
 
     /**
+     * 渲染管线：VANILLA 走原版 entity 管线，其余三个走 {@link ItemPipeline} 自建管线。
+     * <p>
+     * 26.3 删除了 Tesselator/BufferUploader，没有「立即模式」可用，所有绘制都必须经过
+     * RenderPass；能自建的是 **pipeline 本身**（着色器宏、剔除、深度、采样器）。
+     */
+    public enum Pipeline {
+        /** 原版 entity cutout（对照） */
+        VANILLA,
+        /** 自建：不做逐面方向光（NO_CARDINAL_LIGHTING） */
+        FLAT,
+        /** 自建：不乘光照贴图（EMISSIVE），输出=贴图×顶点色 */
+        FULLBRIGHT,
+        /** 自建 + 顶点纯白 + UV 钉在贴图纯白像素：只验证几何/深度/剔除，排除贴图 */
+        SOLID
+    }
+
+    /**
      * 诊断：基岩模型上下翻转用的那一步（TACZ 原本是 {@code Axis.ZP 180}）。
      * <p>
      * 180° 绕 Z 同时也是绕模型长轴滚一圈，所以它会顺带把「刀的正反面」对调。
@@ -132,6 +149,9 @@ public final class Settings {
     public static Half half = Half.BOTH;
     public static Flip flip = Flip.ZP180;
     public static UvMode uvMode = UvMode.NORMAL;
+    public static Pipeline pipeline = Pipeline.VANILLA;
+    /** 自建管线里是否剔除背面（默认不剔除，和原版 CUTOUT 一致） */
+    public static boolean cull = false;
     public static FaceDebug faceDebug = FaceDebug.NONE;
     /** 是否提交武器几何（关掉只剩手臂，用于确认画面上的刀确实是我们画的） */
     public static boolean submitGeo = true;
@@ -159,6 +179,8 @@ public final class Settings {
             faceDebug = readEnum(FaceDebug.class, p.getProperty("faceDebug"), faceDebug);
             flip = readEnum(Flip.class, p.getProperty("flip"), flip);
             uvMode = readEnum(UvMode.class, p.getProperty("uvMode"), uvMode);
+            pipeline = readEnum(Pipeline.class, p.getProperty("pipeline"), pipeline);
+            cull = Boolean.parseBoolean(p.getProperty("cull", String.valueOf(cull)));
             submitGeo = Boolean.parseBoolean(p.getProperty("submitGeo", String.valueOf(submitGeo)));
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
@@ -187,6 +209,8 @@ public final class Settings {
         p.setProperty("faceDebug", faceDebug.name());
         p.setProperty("flip", flip.name());
         p.setProperty("uvMode", uvMode.name());
+        p.setProperty("pipeline", pipeline.name());
+        p.setProperty("cull", String.valueOf(cull));
         p.setProperty("submitGeo", String.valueOf(submitGeo));
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));

@@ -106,12 +106,16 @@ public class BedrockPart {
         int count = mesh.quads();
         // 朝向调试：只画某个方向的面，并把 UV 钉在一个纯白像素上，让顶点纯色不受贴图影响
         final int debugFace = com.punchytacz.Settings.FaceDebug.selectedFace();
+        // SOLID 管线：顶点纯白 + UV 钉纯白像素，只验证几何/深度/剔除，排除贴图因素
+        final boolean solid = com.punchytacz.Settings.pipeline == com.punchytacz.Settings.Pipeline.SOLID;
         for (int q = 0; q < count; q++) {
             int faceId = mesh.faceId(q);
             if (debugFace >= 0 && faceId != debugFace) {
                 continue;
             }
-            int quadColor = debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.colorOf(faceId) : color;
+            int quadColor = solid ? 0xFFFFFFFF
+                    : debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.colorOf(faceId) : color;
+            final boolean pinWhite = debugFace >= 0 || solid;
             int base = q * QuadMesh.FLOATS_PER_QUAD;
             float nx = d[base + 3];
             float ny = d[base + 4];
@@ -137,8 +141,8 @@ public class BedrockPart {
                         m.m01() * x + m.m11() * y + m.m21() * z + m.m31(),
                         m.m02() * x + m.m12() * y + m.m22() * z + m.m32(),
                         quadColor,
-                        debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.WHITE_U : d[o + 6],
-                        debugFace >= 0 ? com.punchytacz.Settings.FaceDebug.WHITE_V : d[o + 7],
+                        pinWhite ? com.punchytacz.Settings.FaceDebug.WHITE_U : d[o + 6],
+                        pinWhite ? com.punchytacz.Settings.FaceDebug.WHITE_V : d[o + 7],
                         overlay, light, tx, ty, tz);
             }
         }

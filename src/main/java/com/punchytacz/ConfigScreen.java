@@ -40,6 +40,21 @@ public final class ConfigScreen {
                 .setSaveConsumer(v -> Settings.half = v)
                 .build());
 
+        render.addEntry(eb.startEnumSelector(Component.literal("渲染管线"), Settings.Pipeline.class, Settings.pipeline)
+                .setDefaultValue(Settings.Pipeline.VANILLA)
+                .setTooltip(Component.literal("VANILLA=原版 entity 管线（对照）\n"
+                        + "FLAT=自建管线，不做逐面方向光\n"
+                        + "FULLBRIGHT=自建管线，不乘光照贴图\n"
+                        + "SOLID=自建管线+纯白，排除贴图只看几何"))
+                .setSaveConsumer(v -> Settings.pipeline = v)
+                .build());
+
+        render.addEntry(eb.startBooleanToggle(Component.literal("剔除背面（自建管线）"), Settings.cull)
+                .setDefaultValue(false)
+                .setTooltip(Component.literal("相邻 cube 的暗面与亮面共面，不剔除会深度冲突出黑块"))
+                .setSaveConsumer(v -> Settings.cull = v)
+                .build());
+
         render.addEntry(eb.startEnumSelector(Component.literal("UV / 正反面（诊断）"), Settings.UvMode.class, Settings.uvMode)
                 .setDefaultValue(Settings.UvMode.NORMAL)
                 .setTooltip(Component.literal("不改定位，只改「哪个面拿哪个 UV」：\n"
@@ -87,7 +102,9 @@ public final class ConfigScreen {
 
         builder.setSavingRunnable(() -> {
             Settings.save();
-            // SWAP_EW / SWAP_UD 在烘焙期生效，保存后重新解析模型
+            // SWAP_EW / SWAP_UD 在烘焙期生效，cull 烘焙进 pipeline，保存后都要重建
+            ItemPipeline.invalidate();
+            ItemRenderType.clear();
             TaczPacks.reload();
             TaczRenderer.resetActive();
         });
