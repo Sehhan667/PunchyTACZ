@@ -14,8 +14,21 @@ public final class AnimationController {
     private final ArrayList<Queue<AnimationPlan>> animationQueue = new ArrayList<>();
     private final Map<String, ObjectAnim> prototypes = new HashMap<>();
     private Iterable<Integer> updatingTrackArray;
+
+    /**
+     * 一条音效请求：{@code effect} 是音效 id；{@code animation} 是**产生它**的动画名。
+     * <p>
+     * 不能在渲染层"看主轨道当前是谁"来猜来源：带过渡的 runAnimation 里，新 runner
+     * 挂在旧 runner 的 {@code transitionTo} 上，{@code getAnimation(track)} 返回的是
+     * **旧动画** —— 过渡窗口（动画开头 0.2s，恰好是每条时间线第一个音效的位置）里
+     * 触发的音效会被错标成旧动画，过渡一完成就被"来源已换"停掉。所以来源必须由
+     * 产生事件的那个 runner 自己报告。
+     */
+    public record SoundRequest(String animation, String effect) {
+    }
+
     /** 本帧跨过的音效请求（渲染层每帧消费） */
-    private final List<String> pendingSounds = new ArrayList<>();
+    private final List<SoundRequest> pendingSoundRequests = new ArrayList<>();
 
     public AnimationController(List<ObjectAnim> animationPrototypes, AnimListenerSupplier listenerSupplier) {
         for (ObjectAnim prototype : animationPrototypes) {
@@ -57,6 +70,7 @@ public final class AnimationController {
         currentRunners.clear();
         animationQueue.clear();
         blending.clear();
+        pendingSoundRequests.clear();
     }
 
     public void queueAnimation(int track, Queue<AnimationPlan> queue) {
@@ -92,6 +106,19 @@ public final class AnimationController {
         ObjectAnim prototype = prototypes.get(animationName);
         if (prototype == null) {
             return;
+        }
+        // 同一轨道正在**循环播放同一条**动画时，不要重建 runner。
+        // 刀包的 lua 在落地时会重新 runAnimation("run", LOOP)，而包里没有 run_hold
+        // （空中那次 runAnimation 是 no-op），于是落地这一下会把正在跑的 run 相位清零
+        // ——表现就是「每次落地卡一下」。TACZ 的枪包有 run_hold，落地前后是两条不同动画，
+        // 所以它不会触发这条路径。
+        if (playType == ObjectAnim.PlayType.LOOP && track < currentRunners.size()) {
+            AnimRunner current = currentRunners.get(track);
+            if (current != null && current.animation() != null
+                    && animationName.equals(current.animation().name)
+                    && current.animation().playType == ObjectAnim.PlayType.LOOP) {
+                return;
+            }
         }
         for (int i = currentRunners.size(); i <= track; i++) {
             currentRunners.add(null);
@@ -180,20 +207,47 @@ public final class AnimationController {
         if (runner == null) {
             return;
         }
-        // 源 runner 与过渡目标都可能本帧推进过（目标在 updateByTrack 里单独 update）
-        pendingSounds.addAll(runner.consumeSoundEvents());
+        // 源 runner 与过渡目标都可能本帧推进过（目标在 updateByTrack 里单独 update），
+        // 每条请求都带上**产生它的那个 runner** 的动画名
+        collectInto(runner);
         if (runner.getTransitionTo() != null) {
-            pendingSounds.addAll(runner.getTransitionTo().consumeSoundEvents());
+            collectInto(runner.getTransitionTo());
+        }
+    }
+
+    private void collectInto(AnimRunner runner) {
+        for (String effect : runner.consumeSoundEvents()) {
+            pendingSoundRequests.add(new SoundRequest(runner.getAnimation().name, effect));
         }
     }
 
     /** 取出本帧跨过的音效请求并清空 */
-    public List<String> consumeSoundEvents() {
-        if (pendingSounds.isEmpty()) {
+    public List<SoundRequest> consumeSoundRequests() {
+        if (pendingSoundRequests.isEmpty()) {
             return List.of();
         }
-        List<String> result = new ArrayList<>(pendingSounds);
-        pendingSounds.clear();
+        List<SoundRequest> result = new ArrayList<>(pendingSoundRequests);
+        pendingSoundRequests.clear();
         return result;
+    }
+
+    /**
+     * 所有轨道上"当前生效"的动画名：带过渡的轨道沿过渡链取**最终目标**——
+     * 切换发生的第一刻，旧动画就算被替换（这正是"切换动画 = 打断音效"的判定依据）。
+     * 自然播完（PLAY_ONCE_STOP/STOP）的 runner 仍停在轨道上，所以它的名字仍在集合里，
+     * 尾部音效可以播完。
+     */
+    public java.util.Set<String> liveAnimationNames() {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (AnimRunner runner : currentRunners) {
+            AnimRunner r = runner;
+            while (r != null && r.isTransitioning() && r.getTransitionTo() != null) {
+                r = r.getTransitionTo();
+            }
+            if (r != null && r.getAnimation() != null) {
+                names.add(r.getAnimation().name);
+            }
+        }
+        return names;
     }
 }

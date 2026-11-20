@@ -43,13 +43,19 @@ dependencies {
     // Punchy 仅编译期引用（不打包、不分发）
     compileOnly files(new File(project.punchy_jar))
     // Fabric 模块（仅编译期）：按键注册与客户端 tick 事件（运行时由 fabric-api 提供）
-    compileOnly fileTree(dir: 'libs', include: ['fabric-key-mapping-api-v1*.jar', 'fabric-lifecycle-events-v1*.jar', 'fabric-api-base*.jar'])
+    compileOnly fileTree(dir: 'libs', include: ['fabric-key-mapping-api-v1*.jar', 'fabric-lifecycle-events-v1*.jar', 'fabric-api-base*.jar', 'fabric-resource-loader-v0*.jar'])
     // 配置界面：仅编译期，运行时由玩家安装的 mod 提供（缺失时自动降级，不影响主功能）
     compileOnly files(new File(project.cloth_config_jar))
     compileOnly files(new File(project.modmenu_jar))
+    // LuaJ：直接跑刀包自带的 state_machine.lua（TACZ 同款运行时），打包进本模组
+    implementation files('libs/luaj-jse-3.0.1.jar')
 }
 
 processResources {
+    // LuaJ 的 class 一起打进 jar（org.luaj.* 是独立包，不会和其它 mod 冲突）
+    from(zipTree('libs/luaj-jse-3.0.1.jar')) {
+        exclude 'META-INF/**'
+    }
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand(version: project.version)

@@ -22,6 +22,8 @@ public class BedrockModel {
     public final Map<String, BedrockPart> parts = new LinkedHashMap<>();
     public final List<BedrockPart> roots = new ArrayList<>();
     public final List<BedrockPart> idleViewPath = new ArrayList<>();
+    /** 改枪界面定位组路径（TACZ 的 {@code refit_view}）；包里没有就是空 */
+    public final List<BedrockPart> refitViewPath = new ArrayList<>();
     /** camera 骨骼的动画旋转（TACZ 的 CameraAnimationObject） */
     public final org.joml.Quaternionf cameraRotation = new org.joml.Quaternionf();
     public float textureWidth = 64;
@@ -136,6 +138,15 @@ public class BedrockModel {
                 path.add(0, part);
             }
             model.idleViewPath.addAll(path);
+        }
+        // 6. refit_view 路径（改枪界面定位组，TACZ 的 REFIT_VIEW_NODE）
+        BedrockPart refitView = model.parts.get("refit_view");
+        if (refitView != null) {
+            List<BedrockPart> path = new ArrayList<>();
+            for (BedrockPart part = refitView; part != null; part = part.getParent()) {
+                path.add(0, part);
+            }
+            model.refitViewPath.addAll(path);
         }
         return model;
     }

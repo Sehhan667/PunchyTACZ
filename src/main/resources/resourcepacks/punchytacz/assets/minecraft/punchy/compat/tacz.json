@@ -1,0 +1,156 @@
+{
+  "item": {
+    "SWORD": {
+      "kind": "SWORD",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in_sword",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out_sword",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "SPEAR": {
+      "kind": "SPEAR",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in_spear",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "AXE": {
+      "kind": "AXE",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "PICKAXE": {
+      "kind": "PICKAXE",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "HOE": {
+      "kind": "HOE",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "SHOVEL": {
+      "kind": "SHOVEL",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "MACE": {
+      "kind": "MACE",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    },
+    "TRIDENT": {
+      "kind": "TRIDENT",
+      "customAnimation": [
+        {
+          "type": "hand_in",
+          "name": "hand_in",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "hand_out",
+          "name": "hand_out",
+          "skip_hand_equip": true
+        },
+        {
+          "type": "inspect",
+          "name": "tacz_inspect"
+        }
+      ]
+    }
+  }
+}

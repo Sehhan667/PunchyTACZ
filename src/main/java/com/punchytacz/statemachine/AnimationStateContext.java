@@ -182,6 +182,27 @@ public class AnimationStateContext {
         return checkStateMachine().getAnimationController().containPrototype(name);
     }
 
+    /** 包内**自己定义**的动画名（不含 TACZ 内置兜底） */
+    private java.util.Set<String> packAnimations = java.util.Set.of();
+
+    public void setPackAnimations(java.util.Set<String> names) {
+        this.packAnimations = names == null ? java.util.Set.of() : names;
+    }
+
+    /**
+     * 只查资源包内定义的动画。{@link #hasAnimationPrototype} 会把 TACZ 内置兜底
+     * （pistol/rifle 的 walk_forward、run_hold 等）也算作存在，用它会误以为包里
+     * 有走路动画，于是播了枪的走路 → 手臂歪掉。
+     */
+    public boolean hasPackAnimation(String name) {
+        return packAnimations.contains(name);
+    }
+
+    /** 诊断用：本 rig 的动画文件里定义了多少条 */
+    public int packAnimationCount() {
+        return packAnimations.size();
+    }
+
     public void trigger(String input) {
         checkStateMachine().trigger(input);
     }

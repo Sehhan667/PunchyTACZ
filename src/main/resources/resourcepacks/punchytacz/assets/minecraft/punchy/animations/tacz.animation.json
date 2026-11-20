@@ -1,0 +1,35 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "tacz_idle": {
+      "animation_length": 2.0,
+      "loop": true,
+      "bones": {}
+    },
+    "tacz_draw": {
+      "animation_length": 0.5,
+      "loop": false,
+      "bones": {}
+    },
+    "tacz_melee_1": {
+      "animation_length": 1.0,
+      "loop": false,
+      "bones": {}
+    },
+    "tacz_melee_2": {
+      "animation_length": 1.0,
+      "loop": false,
+      "bones": {}
+    },
+    "tacz_melee_3": {
+      "animation_length": 1.0,
+      "loop": false,
+      "bones": {}
+    },
+    "tacz_inspect": {
+      "animation_length": 2.0,
+      "loop": false,
+      "bones": {}
+    }
+  }
+}

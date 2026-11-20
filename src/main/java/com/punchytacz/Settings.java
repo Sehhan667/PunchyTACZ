@@ -160,7 +160,17 @@ public final class Settings {
      * {@code inspect_angel} 的音效表）。注意 Punchy 自己可能也在播它 clip 的音效，
      * 若出现双重音效就关掉这个开关。
      */
+    /**
+     * 播放动画文件里的 sound_effects。
+     * 数据源由 BedrockAnimationLoader 在资源重载时从各刀包解析，新包丢进去自动生效。
+     * 生命周期由 activeSounds（跟随动画）+ exitRuntime（切走）管理。
+     */
     public static boolean playAnimSounds = true;
+    /**
+     * 把动画里 {@code camera} 骨骼的旋转叠加到世界相机（TACZ 的 applyLevelCameraAnimation）。
+     * 默认关：开久了会晕，而且和光影/其它相机 mod 可能打架。要 TACZ 那种镜头晃动时再开。
+     */
+    public static boolean cameraAnim = false;
     /** 每秒打印一条实际渲染状态 */
     public static boolean logState = true;
 
@@ -188,6 +198,7 @@ public final class Settings {
             renderArms = Boolean.parseBoolean(p.getProperty("renderArms", String.valueOf(renderArms)));
             punchyRender = Boolean.parseBoolean(p.getProperty("punchyRender", String.valueOf(punchyRender)));
             playAnimSounds = Boolean.parseBoolean(p.getProperty("playAnimSounds", String.valueOf(playAnimSounds)));
+            cameraAnim = Boolean.parseBoolean(p.getProperty("cameraAnim", String.valueOf(cameraAnim)));
             logState = Boolean.parseBoolean(p.getProperty("logState", String.valueOf(logState)));
         } catch (Throwable ignored) {
             // 配置损坏时保持默认值，不影响启动
@@ -219,6 +230,7 @@ public final class Settings {
         p.setProperty("renderArms", String.valueOf(renderArms));
         p.setProperty("punchyRender", String.valueOf(punchyRender));
         p.setProperty("playAnimSounds", String.valueOf(playAnimSounds));
+        p.setProperty("cameraAnim", String.valueOf(cameraAnim));
         p.setProperty("logState", String.valueOf(logState));
         try (OutputStream out = Files.newOutputStream(file())) {
             p.store(out, "PunchyTACZ render settings");

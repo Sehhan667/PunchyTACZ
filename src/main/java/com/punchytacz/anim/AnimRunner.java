@@ -11,6 +11,11 @@ import net.minecraft.client.Minecraft;
 /** 移植 TACZ ObjectAnimationRunner（去掉声音/粒子通道），负责进度、过渡与挂起/停止 */
 public final class AnimRunner {
     private final ObjectAnim animation;
+
+    /** 当前正在播放的动画原型（用于"同一动画不要重复重启"的判断） */
+    public ObjectAnim animation() {
+        return animation;
+    }
     private long transitionTimeNs;
     private ArrayList<float[]> valueFrom;
     private ArrayList<float[]> valueRecover;
